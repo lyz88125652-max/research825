@@ -14,28 +14,32 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 
 
-def find_best_threshold(y_true, probs):
-    """Youden's J Index (Sensitivity + Specificity - 1) を最大化する閾値を探索."""
+def find_best_threshold(y_true, probs, metric="f1"):
+    """F1-Score または MCC を最大化する最適な判定閾値を探索."""
     best_thresh = 0.5
-    best_j = -1.0
-    for t in np.arange(0.10, 0.60, 0.01):
+    best_score = -1.0
+
+    for t in np.arange(0.15, 0.65, 0.01):
         preds = (probs >= t).astype(int)
-        sens = recall_score(y_true, preds, zero_division=0)
 
-        tn = np.sum((y_true == 0) & (preds == 0))
-        fp = np.sum((y_true == 0) & (preds == 1))
-        spec = tn / (tn + fp) if (tn + fp) > 0 else 0
+        if metric == "f1":
+            score = f1_score(y_true, preds, zero_division=0)
+        elif metric == "mcc":
+            score = matthews_corrcoef(y_true, preds)
+        else:
+            score = f1_score(y_true, preds, zero_division=0)
 
-        j_index = sens + spec - 1
-        if j_index > best_j:
-            best_j = j_index
+        if score > best_score:
+            best_score = score
             best_thresh = t
-    return best_thresh, best_j
+
+    return best_thresh, best_score
 
 
 def main():
-    print("=== LightGBM 単体評価スクリプト (ESM-2 特徴量対応) ===")
+    print("=== LightGBM 評価スクリプト (正則化強化 & 閾値最適化版) ===")
 
+    # ファイル入力
     train_path = input(
         "学習用Excelファイル名 (デフォルト: trainESMft.xlsx): "
     ).strip()
@@ -48,11 +52,16 @@ def main():
     if not test_path:
         test_path = "testESMft.xlsx"
 
-    # 1. データ読み込み（位置指定で取得するように修正）
+    out_filename = input(
+        "出力ファイル名 (デフォルト: lgbm_esm_result.xlsx): "
+    ).strip()
+    if not out_filename:
+        out_filename = "lgbm_esm_result.xlsx"
+
+    # 1. データ読み込み（位置指定: 1列目=配列, 2列目=ラベル, 3列目以降=1280次元ベクトル）
     df_train = pd.read_excel(train_path)
     df_test = pd.read_excel(test_path)
 
-    # 2列目(インデックス1)をラベル、3列目以降(インデックス2〜)を特徴量として読み込み
     y_train = df_train.iloc[:, 1].values.astype(int)
     X_train = df_train.iloc[:, 2:].values
 
@@ -60,7 +69,7 @@ def main():
     X_test = df_test.iloc[:, 2:].values
 
     print(
-        f"Train データ数: {X_train.shape[0]} (正例:"
+        f"\nTrain データ数: {X_train.shape[0]} (正例:"
         f" {np.sum(y_train == 1)}/陰性: {np.sum(y_train == 0)})"
     )
     print(
@@ -69,7 +78,6 @@ def main():
     )
     print(f"特徴量次元数 : {X_train.shape[1]}")
 
-    # 不均衡重み（陰性数 / 陽性数）
     scale_pos_weight = np.sum(y_train == 0) / np.sum(y_train == 1)
     print(f"不均衡重み (scale_pos_weight): {scale_pos_weight:.2f}")
 
@@ -86,20 +94,20 @@ def main():
         X_tr, X_val = X_train[t_idx], X_train[v_idx]
         y_tr, y_val = y_train[t_idx], y_train[v_idx]
 
-        # 特徴量の標準化
         scaler = StandardScaler()
         X_tr_s = scaler.fit_transform(X_tr)
         X_val_s = scaler.transform(X_val)
 
-        # LightGBM モデル構築 (過学習抑制パラメータ設定)
+        # 過学習を強力に抑える正則化パラメータ設定
         model = lgb.LGBMClassifier(
-            n_estimators=300,
-            learning_rate=0.03,  # 小さめの学習率でじっくり学習
-            max_depth=4,  # 木の深さを制限して過学習抑制
-            num_leaves=15,  # 葉ノード数制限
-            subsample=0.8,  # 行のサンプリング
-            colsample_bytree=0.8,  # 列（特徴量）のサンプリング
-            scale_pos_weight=scale_pos_weight,  # 不均衡重み
+            n_estimators=200,
+            learning_rate=0.03,
+            max_depth=3,  # 木の深さを3に浅く設定
+            num_leaves=7,  # 葉の数を7に制限
+            min_child_samples=20,  # 1つの葉の最小データ数
+            subsample=0.8,
+            colsample_bytree=0.5,  # 特徴量の半数(640次元)のみ使用して過学習抑制
+            scale_pos_weight=scale_pos_weight,
             random_state=42,
             n_jobs=-1,
             verbose=-1,
@@ -107,12 +115,11 @@ def main():
 
         model.fit(X_tr_s, y_tr)
 
-        # 予測確率
         val_probs = model.predict_proba(X_val_s)[:, 1]
         tr_probs = model.predict_proba(X_tr_s)[:, 1]
 
-        # 最適閾値の検索
-        opt_thresh, _ = find_best_threshold(y_val, val_probs)
+        # F1-Score を基準にした最適閾値検索
+        opt_thresh, _ = find_best_threshold(y_val, val_probs, metric="f1")
         best_thresholds.append(opt_thresh)
 
         val_preds = (val_probs >= opt_thresh).astype(int)
@@ -143,12 +150,13 @@ def main():
     X_test_s = scaler_full.transform(X_test)
 
     model_full = lgb.LGBMClassifier(
-        n_estimators=300,
+        n_estimators=200,
         learning_rate=0.03,
-        max_depth=4,
-        num_leaves=15,
+        max_depth=3,
+        num_leaves=7,
+        min_child_samples=20,
         subsample=0.8,
-        colsample_bytree=0.8,
+        colsample_bytree=0.5,
         scale_pos_weight=scale_pos_weight,
         random_state=42,
         n_jobs=-1,
@@ -198,7 +206,12 @@ def main():
 
     output_dir = "eval_results"
     os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, "lgbm_esm_result.xlsx")
+
+    # .xlsx 拡張子の補正
+    if not out_filename.endswith(".xlsx"):
+        out_filename += ".xlsx"
+
+    output_path = os.path.join(output_dir, out_filename)
     res_df.to_excel(output_path, index=False)
     print(f"\n✅ 評価結果を出力しました: '{output_path}'")
 
