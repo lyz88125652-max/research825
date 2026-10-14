@@ -1,17 +1,17 @@
 import os
+import lightgbm as lgb
 import numpy as np
 import pandas as pd
-import lightgbm as lgb
+from sklearn.metrics import (
+    accuracy_score,
+    f1_score,
+    matthews_corrcoef,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
 from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import (
-    roc_auc_score,
-    f1_score,
-    recall_score,
-    precision_score,
-    accuracy_score,
-    matthews_corrcoef,
-)
 
 
 def find_best_threshold(y_true, probs):
@@ -48,15 +48,16 @@ def main():
     if not test_path:
         test_path = "testESMft.xlsx"
 
-    # 1. データ読み込み
+    # 1. データ読み込み（位置指定で取得するように修正）
     df_train = pd.read_excel(train_path)
     df_test = pd.read_excel(test_path)
 
-    y_train = df_train["LABEL"].values.astype(int)
-    X_train = df_train.drop(columns=["SEQUENCE", "LABEL"]).values
+    # 2列目(インデックス1)をラベル、3列目以降(インデックス2〜)を特徴量として読み込み
+    y_train = df_train.iloc[:, 1].values.astype(int)
+    X_train = df_train.iloc[:, 2:].values
 
-    y_test = df_test["LABEL"].values.astype(int)
-    X_test = df_test.drop(columns=["SEQUENCE", "LABEL"]).values
+    y_test = df_test.iloc[:, 1].values.astype(int)
+    X_test = df_test.iloc[:, 2:].values
 
     print(
         f"Train データ数: {X_train.shape[0]} (正例:"

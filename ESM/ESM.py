@@ -17,18 +17,19 @@ def extract_and_save_esm2_features(
     print(f"使用モデル  : {model_name}")
     print(f"出力ファイル: {output_xlsx}")
 
-    # 1. データ読み込み（1列目を配列、2列目をラベルとして取得）
     if not os.path.exists(input_xlsx):
-        raise FileNotFoundError(f"ファイルが見つかりません: {input_xlsx}")
+        print(f"❌ エラー: ファイルが見つかりません: {input_xlsx}")
+        return None
 
+    # 1. データ読み込み
     df_raw = pd.read_excel(input_xlsx)
-
     if df_raw.shape[1] < 2:
-        raise ValueError(
-            "入力Excelには少なくとも2つの列（1列目: 配列, 2列目: ラベル）が必要です。"
+        print(
+            "❌ エラー: 入力Excelには少なくとも2つの列（1列目: 配列, 2列目:"
+            " ラベル）が必要です。"
         )
+        return None
 
-    # 列名に依存せず、位置（0列目＝配列、1列目＝ラベル）で確実に取得
     sequences = df_raw.iloc[:, 0].astype(str).str.strip().tolist()
     labels = df_raw.iloc[:, 1].values
 
@@ -37,7 +38,7 @@ def extract_and_save_esm2_features(
     print(f"ラベル分布  : 1={np.sum(labels == 1)}, 0={np.sum(labels == 0)}")
 
     # 2. モデルとトークナイザーのロード
-    print("\nモデルとトークナイザーをロード中 (初回はダウンロードが発生します)...")
+    print("\nモデルとトークナイザーをロード中...")
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = EsmModel.from_pretrained(model_name)
     model.eval()
@@ -57,14 +58,12 @@ def extract_and_save_esm2_features(
             end_idx = min(start_idx + batch_size, total_seqs)
             batch_seqs = sequences[start_idx:end_idx]
 
-            # トークン化（バッチ内でパディング）
             inputs = tokenizer(
                 batch_seqs, return_tensors="pt", padding=True, truncation=True
             ).to(device)
 
             outputs = model(**inputs)
 
-            # パディングを除外した正確な Mean Pooling 計算
             attention_mask = inputs["attention_mask"].unsqueeze(-1)
             sum_embeddings = torch.sum(
                 outputs.last_hidden_state * attention_mask, dim=1
@@ -79,12 +78,11 @@ def extract_and_save_esm2_features(
 
     # 4. 出力用DataFrameの構築
     all_embeddings = np.vstack(embeddings_list)
-    dim = all_embeddings.shape[1]  # 1280次元
+    dim = all_embeddings.shape[1]
 
     esm_cols = [f"ESM_{i+1}" for i in range(dim)]
     df_esm = pd.DataFrame(all_embeddings, columns=esm_cols)
 
-    # 1列目を SEQUENCE、2列目を LABEL と命名を統一して先頭に配置
     df_meta = pd.DataFrame({"SEQUENCE": sequences, "LABEL": labels})
     result_df = pd.concat([df_meta, df_esm], axis=1)
 
@@ -98,31 +96,64 @@ def extract_and_save_esm2_features(
     return output_xlsx
 
 
+def process_single_file(default_out):
+    input_path = input("変換するExcelファイル名を入力してください: ").strip()
+    if not input_path:
+        print("❌ ファイル名が入力されなかったためキャンセルしました。")
+        return
+
+    out_path = input(
+        f"出力Excelファイル名 (未入力の場合は '{default_out}'): "
+    ).strip()
+    if not out_path:
+        out_path = default_out
+
+    extract_and_save_esm2_features(input_path, out_path)
+
+
 if __name__ == "__main__":
-    # --- 1. 訓練データ（trainESMft.xlsx）の作成 ---
-    train_input = input(
-        "学習用Excelファイル名を入力してください (例: train_data.xlsx): "
-    ).strip()
-    if not train_input:
-        train_input = "train_data.xlsx"
+    while True:
+        print("\n==========================================")
+        print("  ESM-2 特徴量抽出ツール (650M / 1280次元)")
+        print("==========================================")
+        print("1: 学習データ (train) のみを変換する")
+        print("2: テストデータ (test) のみを変換する")
+        print("3: 両方 (train と test) を順番に変換する")
+        print("4: 終了する")
 
-    extract_and_save_esm2_features(
-        input_xlsx=train_input,
-        output_xlsx="trainESMft.xlsx",  # デフォルト名
-        model_name="facebook/esm2_t33_650M_UR50D",
-        batch_size=16,
-    )
+        choice = input("\n実行したい処理の番号を選択してください (1-4): ").strip()
 
-    # --- 2. テストデータ（testESMft.xlsx）の作成 ---
-    test_input = input(
-        "テスト用Excelファイル名を入力してください (例: test_data.xlsx): "
-    ).strip()
-    if not test_input:
-        test_input = "test_data.xlsx"
+        if choice == "1":
+            print("\n--- 学習データの変換 ---")
+            process_single_file(default_out="trainESMft.xlsx")
 
-    extract_and_save_esm2_features(
-        input_xlsx=test_input,
-        output_xlsx="testESMft.xlsx",  # デフォルト名
-        model_name="facebook/esm2_t33_650M_UR50D",
-        batch_size=16,
-    )
+        elif choice == "2":
+            print("\n--- テストデータの変換 ---")
+            process_single_file(default_out="testESMft.xlsx")
+
+        elif choice == "3":
+            print("\n--- 1/2: 学習データの変換 ---")
+            train_in = input("学習用Excelファイル名を入力してください: ").strip()
+            if train_in:
+                train_out = input(
+                    "学習用出力ファイル名 (デフォルト: trainESMft.xlsx): "
+                ).strip()
+                if not train_out:
+                    train_out = "trainESMft.xlsx"
+                extract_and_save_esm2_features(train_in, train_out)
+
+            print("\n--- 2/2: テストデータの変換 ---")
+            test_in = input("テスト用Excelファイル名を入力してください: ").strip()
+            if test_in:
+                test_out = input(
+                    "テスト用出力ファイル名 (デフォルト: testESMft.xlsx): "
+                ).strip()
+                if not test_out:
+                    test_out = "testESMft.xlsx"
+                extract_and_save_esm2_features(test_in, test_out)
+
+        elif choice == "4":
+            print("ツールを終了します。")
+            break
+        else:
+            print("❌ 1〜4 の番号を入力してください。")
