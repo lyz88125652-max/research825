@@ -14,7 +14,7 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 
 
-def find_best_threshold(y_true, probs, metric="f1"):
+def find_best_threshold(y_true, probs, metric='f1'):
     """F1-Score または MCC を最大化する最適な判定閾値を探索."""
     best_thresh = 0.5
     best_score = -1.0
@@ -22,9 +22,9 @@ def find_best_threshold(y_true, probs, metric="f1"):
     for t in np.arange(0.15, 0.65, 0.01):
         preds = (probs >= t).astype(int)
 
-        if metric == "f1":
+        if metric == 'f1':
             score = f1_score(y_true, preds, zero_division=0)
-        elif metric == "mcc":
+        elif metric == 'mcc':
             score = matthews_corrcoef(y_true, preds)
         else:
             score = f1_score(y_true, preds, zero_division=0)
@@ -37,28 +37,28 @@ def find_best_threshold(y_true, probs, metric="f1"):
 
 
 def main():
-    print("=== LightGBM 評価スクリプト (正則化強化 & 閾値最適化版) ===")
+    print('=== LightGBM 評価スクリプト (過学習・極限抑制版) ===')
 
     # ファイル入力
     train_path = input(
-        "学習用Excelファイル名 (デフォルト: trainESMft.xlsx): "
+        '学習用Excelファイル名 (デフォルト: trainESMft.xlsx): '
     ).strip()
     if not train_path:
-        train_path = "trainESMft.xlsx"
+        train_path = 'trainESMft.xlsx'
 
     test_path = input(
-        "テスト用Excelファイル名 (デフォルト: testESMft.xlsx): "
+        'テスト用Excelファイル名 (デフォルト: testESMft.xlsx): '
     ).strip()
     if not test_path:
-        test_path = "testESMft.xlsx"
+        test_path = 'testESMft.xlsx'
 
     out_filename = input(
-        "出力ファイル名 (デフォルト: lgbm_esm_result.xlsx): "
+        '出力ファイル名 (デフォルト: lgbm_result_regularized.xlsx): '
     ).strip()
     if not out_filename:
-        out_filename = "lgbm_esm_result.xlsx"
+        out_filename = 'lgbm_result_regularized.xlsx'
 
-    # 1. データ読み込み（位置指定: 1列目=配列, 2列目=ラベル, 3列目以降=1280次元ベクトル）
+    # 1. データ読み込み
     df_train = pd.read_excel(train_path)
     df_test = pd.read_excel(test_path)
 
@@ -69,17 +69,17 @@ def main():
     X_test = df_test.iloc[:, 2:].values
 
     print(
-        f"\nTrain データ数: {X_train.shape[0]} (正例:"
-        f" {np.sum(y_train == 1)}/陰性: {np.sum(y_train == 0)})"
+        f'\nTrain データ数: {X_train.shape[0]} (正例:'
+        f' {np.sum(y_train == 1)}/陰性: {np.sum(y_train == 0)})'
     )
     print(
-        f"Test  データ数: {X_test.shape[0]} (正例:"
-        f" {np.sum(y_test == 1)}/陰性: {np.sum(y_test == 0)})"
+        f'Test  データ数: {X_test.shape[0]} (正例:'
+        f' {np.sum(y_test == 1)}/陰性: {np.sum(y_test == 0)})'
     )
-    print(f"特徴量次元数 : {X_train.shape[1]}")
+    print(f'特徴量次元数 : {X_train.shape[1]}')
 
     scale_pos_weight = np.sum(y_train == 0) / np.sum(y_train == 1)
-    print(f"不均衡重み (scale_pos_weight): {scale_pos_weight:.2f}")
+    print(f'不均衡重み (scale_pos_weight): {scale_pos_weight:.2f}')
 
     # -------------------------------------------------------------
     # STEP 1: 5-Fold 交差検証 (CV)
@@ -98,15 +98,20 @@ def main():
         X_tr_s = scaler.fit_transform(X_tr)
         X_val_s = scaler.transform(X_val)
 
-        # 過学習を強力に抑える正則化パラメータ設定
+        # ---------------------------------------------------------
+        # 過学習（Train AUC = 1.0）を物理的に防ぐ超強力な正則化パラメータ
+        # ---------------------------------------------------------
         model = lgb.LGBMClassifier(
-            n_estimators=200,
-            learning_rate=0.03,
-            max_depth=3,  # 木の深さを3に浅く設定
-            num_leaves=7,  # 葉の数を7に制限
-            min_child_samples=20,  # 1つの葉の最小データ数
-            subsample=0.8,
-            colsample_bytree=0.5,  # 特徴量の半数(640次元)のみ使用して過学習抑制
+            n_estimators=150,  # 木の数を少し減らす
+            learning_rate=0.02,  # 学習率を下げてゆっくり構築
+            max_depth=2,  # 木の深さを2（超シンプルな分岐）に極小化
+            num_leaves=3,  # 葉ノード数を最大3つに限定
+            min_child_samples=40,  # 1つの葉に必要な最小データ数を40件に引き上げ
+            subsample=0.6,  # 毎回60%のデータ行のみサンプリング
+            subsample_freq=1,
+            colsample_bytree=0.3,  # 1280次元のうち30%(約384次元)だけランダム使用
+            reg_alpha=2.0,  # L1正則化 (不要特徴量の重みを完全0へ)
+            reg_lambda=5.0,  # L2正則化 (重みの肥大化を強力に抑制)
             scale_pos_weight=scale_pos_weight,
             random_state=42,
             n_jobs=-1,
@@ -118,8 +123,8 @@ def main():
         val_probs = model.predict_proba(X_val_s)[:, 1]
         tr_probs = model.predict_proba(X_tr_s)[:, 1]
 
-        # F1-Score を基準にした最適閾値検索
-        opt_thresh, _ = find_best_threshold(y_val, val_probs, metric="f1")
+        # F1-Score 基準での最適閾値検索
+        opt_thresh, _ = find_best_threshold(y_val, val_probs, metric='f1')
         best_thresholds.append(opt_thresh)
 
         val_preds = (val_probs >= opt_thresh).astype(int)
@@ -133,14 +138,14 @@ def main():
 
     mean_opt_thresh = np.mean(best_thresholds)
 
-    print("\n--- 5-Fold CV 評価結果 ---")
-    print(f"Train AUC        : {np.mean(train_aucs):.4f}")
-    print(f"ROC-AUC (CV)     : {np.mean(cv_aucs):.4f}")
-    print(f"Sensitivity (CV) : {np.mean(cv_sens):.4f}")
-    print(f"Precision (CV)   : {np.mean(cv_precs):.4f}")
-    print(f"F1-Score (CV)    : {np.mean(cv_f1s):.4f}")
-    print(f"MCC (CV)         : {np.mean(cv_mccs):.4f}")
-    print(f"平均最適閾値     : {mean_opt_thresh:.4f}")
+    print('\n--- 5-Fold CV 評価結果 ---')
+    print(f'Train AUC        : {np.mean(train_aucs):.4f}')
+    print(f'ROC-AUC (CV)     : {np.mean(cv_aucs):.4f}')
+    print(f'Sensitivity (CV) : {np.mean(cv_sens):.4f}')
+    print(f'Precision (CV)   : {np.mean(cv_precs):.4f}')
+    print(f'F1-Score (CV)    : {np.mean(cv_f1s):.4f}')
+    print(f'MCC (CV)         : {np.mean(cv_mccs):.4f}')
+    print(f'平均最適閾値     : {mean_opt_thresh:.4f}')
 
     # -------------------------------------------------------------
     # STEP 2: 全 Train データで再学習 & Test データ評価
@@ -150,13 +155,16 @@ def main():
     X_test_s = scaler_full.transform(X_test)
 
     model_full = lgb.LGBMClassifier(
-        n_estimators=200,
-        learning_rate=0.03,
-        max_depth=3,
-        num_leaves=7,
-        min_child_samples=20,
-        subsample=0.8,
-        colsample_bytree=0.5,
+        n_estimators=150,
+        learning_rate=0.02,
+        max_depth=2,
+        num_leaves=3,
+        min_child_samples=40,
+        subsample=0.6,
+        subsample_freq=1,
+        colsample_bytree=0.3,
+        reg_alpha=2.0,
+        reg_lambda=5.0,
         scale_pos_weight=scale_pos_weight,
         random_state=42,
         n_jobs=-1,
@@ -174,47 +182,46 @@ def main():
     test_acc = accuracy_score(y_test, test_preds)
     test_mcc = matthews_corrcoef(y_test, test_preds)
 
-    print("\n=== Test データ評価結果 ===")
-    print(f"ROC-AUC (Test)   : {test_auc:.4f}")
-    print(f"Sensitivity(Test): {test_sens:.4f}")
-    print(f"Precision (Test) : {test_prec:.4f}")
-    print(f"F1-Score (Test)  : {test_f1:.4f}")
-    print(f"Accuracy (Test)  : {test_acc:.4f}")
-    print(f"MCC (Test)       : {test_mcc:.4f}")
+    print('\n=== Test データ評価結果 ===')
+    print(f'ROC-AUC (Test)   : {test_auc:.4f}')
+    print(f'Sensitivity(Test): {test_sens:.4f}')
+    print(f'Precision (Test) : {test_prec:.4f}')
+    print(f'F1-Score (Test)  : {test_f1:.4f}')
+    print(f'Accuracy (Test)  : {test_acc:.4f}')
+    print(f'MCC (Test)       : {test_mcc:.4f}')
 
     # -------------------------------------------------------------
     # STEP 3: 結果の保存
     # -------------------------------------------------------------
     res_df = pd.DataFrame([{
-        "モデル": "LightGBM",
-        "特徴量": os.path.basename(train_path),
-        "次元数": X_train.shape[1],
-        "Train AUC": round(np.mean(train_aucs), 4),
-        "ROC-AUC (CV)": round(np.mean(cv_aucs), 4),
-        "Sensitivity (CV)": round(np.mean(cv_sens), 4),
-        "Precision (CV)": round(np.mean(cv_precs), 4),
-        "F1-Score (CV)": round(np.mean(cv_f1s), 4),
-        "MCC (CV)": round(np.mean(cv_mccs), 4),
-        "Opt Threshold": round(mean_opt_thresh, 4),
-        "ROC-AUC (Test)": round(test_auc, 4),
-        "Sensitivity (Test)": round(test_sens, 4),
-        "Precision (Test)": round(test_prec, 4),
-        "F1-Score (Test)": round(test_f1, 4),
-        "Accuracy (Test)": round(test_acc, 4),
-        "MCC (Test)": round(test_mcc, 4),
+        'モデル': 'LightGBM (Regularized)',
+        '特徴量': os.path.basename(train_path),
+        '次元数': X_train.shape[1],
+        'Train AUC': round(np.mean(train_aucs), 4),
+        'ROC-AUC (CV)': round(np.mean(cv_aucs), 4),
+        'Sensitivity (CV)': round(np.mean(cv_sens), 4),
+        'Precision (CV)': round(np.mean(cv_precs), 4),
+        'F1-Score (CV)': round(np.mean(cv_f1s), 4),
+        'MCC (CV)': round(np.mean(cv_mccs), 4),
+        'Opt Threshold': round(mean_opt_thresh, 4),
+        'ROC-AUC (Test)': round(test_auc, 4),
+        'Sensitivity (Test)': round(test_sens, 4),
+        'Precision (Test)': round(test_prec, 4),
+        'F1-Score (Test)': round(test_f1, 4),
+        'Accuracy (Test)': round(test_acc, 4),
+        'MCC (Test)': round(test_mcc, 4),
     }])
 
-    output_dir = "eval_results"
+    output_dir = 'eval_results'
     os.makedirs(output_dir, exist_ok=True)
 
-    # .xlsx 拡張子の補正
-    if not out_filename.endswith(".xlsx"):
-        out_filename += ".xlsx"
+    if not out_filename.endswith('.xlsx'):
+        out_filename += '.xlsx'
 
     output_path = os.path.join(output_dir, out_filename)
     res_df.to_excel(output_path, index=False)
     print(f"\n✅ 評価結果を出力しました: '{output_path}'")
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
