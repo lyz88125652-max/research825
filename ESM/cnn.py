@@ -30,7 +30,7 @@ if torch.cuda.is_available():
 
 
 # -------------------------------------------------------------
-# 1D-CNN モデル定義 (改善版: 広域カーネル & チャンネル調整)
+# 1D-CNN モデル定義
 # -------------------------------------------------------------
 class ESM1DCNN(nn.Module):
 
@@ -76,7 +76,7 @@ class ESM1DCNN(nn.Module):
 
 
 # -------------------------------------------------------------
-# 最適閾値検索 (MCC ベースに強化)
+# 最適閾値検索 (MCC ベース)
 # -------------------------------------------------------------
 def find_best_threshold(y_true, probs, metric="mcc"):
     best_thresh = 0.5
@@ -97,7 +97,7 @@ def find_best_threshold(y_true, probs, metric="mcc"):
 
 
 # -------------------------------------------------------------
-# 学習・評価関数 (Loss 履歴の取得対応)
+# 学習・評価関数
 # -------------------------------------------------------------
 def train_model(
     model,
@@ -158,7 +158,7 @@ def train_model(
     if best_model_weights is not None:
         model.load_state_dict(best_model_weights)
 
-    return model, train_loss_history, val_loss_history
+    return model, train_loss_history, val_loss_history, best_val_loss
 
 
 def predict_probs(model, data_loader, device):
@@ -175,16 +175,26 @@ def predict_probs(model, data_loader, device):
     return np.array(probs)
 
 
+def evaluate_loss(model, data_loader, criterion, device):
+    """指定 DataLoader における Loss の計算."""
+    model.eval()
+    total_loss = 0.0
+    with torch.no_grad():
+        for batch_x, batch_y in data_loader:
+            batch_x, batch_y = batch_x.to(device), batch_y.to(device)
+            outputs = model(batch_x).squeeze(1)
+            loss = criterion(outputs, batch_y)
+            total_loss += loss.item() * batch_x.size(0)
+    return total_loss / len(data_loader.dataset)
+
+
 # -------------------------------------------------------------
 # Loss 曲線の描画・保存関数
 # -------------------------------------------------------------
 def plot_loss_curves(all_train_losses, all_val_losses, save_path):
     plt.figure(figsize=(10, 6))
 
-    # 5-Fold の平均 Loss 曲線を計算
     max_epochs = max(len(l) for l in all_train_losses)
-
-    # パディング処理（途中で早期終了した Fold を考慮）
     padded_train = np.array([
         l + [l[-1]] * (max_epochs - len(l)) for l in all_train_losses
     ])
@@ -196,7 +206,6 @@ def plot_loss_curves(all_train_losses, all_val_losses, save_path):
     mean_val_loss = np.mean(padded_val, axis=0)
     epochs = np.arange(1, max_epochs + 1)
 
-    # 各 Fold の薄い線
     for i in range(len(all_train_losses)):
         plt.plot(
             np.arange(1, len(all_train_losses[i]) + 1),
@@ -213,7 +222,6 @@ def plot_loss_curves(all_train_losses, all_val_losses, save_path):
             linestyle="--",
         )
 
-    # 平均曲線 (太線)
     plt.plot(
         epochs,
         mean_train_loss,
@@ -231,7 +239,9 @@ def plot_loss_curves(all_train_losses, all_val_losses, save_path):
 
     plt.xlabel("Epochs", fontsize=12)
     plt.ylabel("Loss (BCEWithLogitsLoss)", fontsize=12)
-    plt.title("1D-CNN Training and Validation Loss Curves (5-Fold CV)", fontsize=14)
+    plt.title(
+        "1D-CNN Training and Validation Loss Curves (5-Fold CV)", fontsize=14
+    )
     plt.legend(fontsize=11)
     plt.grid(True, linestyle=":", alpha=0.6)
     plt.tight_layout()
@@ -242,7 +252,7 @@ def plot_loss_curves(all_train_losses, all_val_losses, save_path):
 
 
 def main():
-    print("=== 1D-CNN 評価スクリプト (Loss曲線出力 & Precision改善版) ===")
+    print("=== 1D-CNN 評価スクリプト (Loss履歴のExcel出力対応版) ===")
 
     train_path = input(
         "学習用Excelファイル名 (デフォルト: trainESMft.xlsx): "
@@ -257,10 +267,10 @@ def main():
         test_path = "testESMft.xlsx"
 
     out_filename = input(
-        "出力ファイル名 (デフォルト: cnn_esm_improved_result.xlsx): "
+        "出力ファイル名 (デフォルト: cnn_esm_loss_result.xlsx): "
     ).strip()
     if not out_filename:
-        out_filename = "cnn_esm_improved_result.xlsx"
+        out_filename = "cnn_esm_loss_result.xlsx"
 
     df_train = pd.read_excel(train_path)
     df_test = pd.read_excel(test_path)
@@ -284,19 +294,19 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"使用デバイス  : {device}")
 
-    # -------------------------------------------------------------
-    # 不均衡重み (pos_weight) の緩和: 6.15 ➔ 3.5 に緩和して Precision を保護
-    # -------------------------------------------------------------
     relaxed_pos_weight = 3.5
     pos_weight_tensor = torch.tensor(
         [relaxed_pos_weight], dtype=torch.float32
     ).to(device)
-    print(f"設定 pos_weight: {relaxed_pos_weight} (Precision 改善用緩和)")
 
     scaler_full = StandardScaler()
     X_train_s_full = scaler_full.fit_transform(X_train)
     X_test_s_full = scaler_full.transform(X_test)
-    test_ds = TensorDataset(torch.tensor(X_test_s_full, dtype=torch.float32))
+
+    test_ds = TensorDataset(
+        torch.tensor(X_test_s_full, dtype=torch.float32),
+        torch.tensor(y_test, dtype=torch.float32),
+    )
     test_loader = DataLoader(test_ds, batch_size=64, shuffle=False)
 
     skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=SEED)
@@ -305,6 +315,8 @@ def main():
     train_aucs = []
     best_thresholds = []
     test_probs_list = []
+    fold_best_val_losses = []
+    fold_test_losses = []
 
     all_fold_train_losses = []
     all_fold_val_losses = []
@@ -333,7 +345,7 @@ def main():
         criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight_tensor)
         optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-2)
 
-        model, tr_loss_hist, val_loss_hist = train_model(
+        model, tr_loss_hist, val_loss_hist, best_v_loss = train_model(
             model,
             tr_loader,
             val_loader,
@@ -346,13 +358,17 @@ def main():
 
         all_fold_train_losses.append(tr_loss_hist)
         all_fold_val_losses.append(val_loss_hist)
+        fold_best_val_losses.append(best_v_loss)
+
+        # このFoldのモデルでの Test Loss の計算
+        test_l = evaluate_loss(model, test_loader, criterion, device)
+        fold_test_losses.append(test_l)
 
         val_probs = predict_probs(model, val_loader, device)
 
         tr_loader_eval = DataLoader(tr_ds, batch_size=64, shuffle=False)
         tr_probs = predict_probs(model, tr_loader_eval, device)
 
-        # MCC を基準にした最適閾値検索
         opt_thresh, _ = find_best_threshold(y_val, val_probs, metric="mcc")
         best_thresholds.append(opt_thresh)
 
@@ -369,9 +385,12 @@ def main():
         test_probs_list.append(fold_test_probs)
 
     mean_opt_thresh = np.mean(best_thresholds)
+    mean_cv_loss = np.mean(fold_best_val_losses)
+    mean_test_loss = np.mean(fold_test_losses)
 
     print("\n--- 5-Fold CV 評価結果 ---")
     print(f"Train AUC        : {np.mean(train_aucs):.4f}")
+    print(f"CV Loss (Mean)   : {mean_cv_loss:.4f}")
     print(f"ROC-AUC (CV)     : {np.mean(cv_aucs):.4f}")
     print(f"Sensitivity (CV) : {np.mean(cv_sens):.4f}")
     print(f"Precision (CV)   : {np.mean(cv_precs):.4f}")
@@ -391,6 +410,7 @@ def main():
     test_mcc = matthews_corrcoef(y_test, test_preds)
 
     print("\n=== Test データ評価結果 (5-Fold Ensemble) ===")
+    print(f"Test Loss (Mean) : {mean_test_loss:.4f}")
     print(f"ROC-AUC (Test)   : {test_auc:.4f}")
     print(f"Sensitivity(Test): {test_sens:.4f}")
     print(f"Precision (Test) : {test_prec:.4f}")
@@ -398,7 +418,9 @@ def main():
     print(f"Accuracy (Test)  : {test_acc:.4f}")
     print(f"MCC (Test)       : {test_mcc:.4f}")
 
+    # -------------------------------------------------------------
     # 出力・保存処理
+    # -------------------------------------------------------------
     output_dir = "eval_results"
     os.makedirs(output_dir, exist_ok=True)
 
@@ -408,18 +430,20 @@ def main():
         all_fold_train_losses, all_fold_val_losses, loss_plot_path
     )
 
-    # 2. Excel スコアの保存
+    # 2. シート①: 総合評価指標 (Evaluation_Metrics)
     res_df = pd.DataFrame([{
         "モデル": "1D-CNN (Improved Ensemble)",
         "特徴量": os.path.basename(train_path),
         "次元数": X_train.shape[1],
         "Train AUC": round(np.mean(train_aucs), 4),
+        "CV Loss (Mean)": round(mean_cv_loss, 4),
         "ROC-AUC (CV)": round(np.mean(cv_aucs), 4),
         "Sensitivity (CV)": round(np.mean(cv_sens), 4),
         "Precision (CV)": round(np.mean(cv_precs), 4),
         "F1-Score (CV)": round(np.mean(cv_f1s), 4),
         "MCC (CV)": round(np.mean(cv_mccs), 4),
         "Opt Threshold": round(mean_opt_thresh, 4),
+        "Test Loss (Mean)": round(mean_test_loss, 4),
         "ROC-AUC (Test)": round(test_auc, 4),
         "Sensitivity (Test)": round(test_sens, 4),
         "Precision (Test)": round(test_prec, 4),
@@ -428,11 +452,60 @@ def main():
         "MCC (Test)": round(test_mcc, 4),
     }])
 
+    # 3. シート②: 各エポックにおける Loss 履歴 & CV/Test Loss テーブル
+    max_epochs = max(len(l) for l in all_fold_train_losses)
+    loss_history_data = []
+
+    for ep in range(max_epochs):
+        row = {"Epoch": ep + 1}
+        for f in range(5):
+            tr_l = (
+                all_fold_train_losses[f][ep]
+                if ep < len(all_fold_train_losses[f])
+                else None
+            )
+            val_l = (
+                all_fold_val_losses[f][ep]
+                if ep < len(all_fold_val_losses[f])
+                else None
+            )
+            row[f"Fold{f+1}_Train_Loss"] = tr_l
+            row[f"Fold{f+1}_Val_Loss"] = val_l
+        loss_history_data.append(row)
+
+    df_loss_history = pd.DataFrame(loss_history_data)
+
+    # 各 Fold の最小 CV Loss と Test Loss のまとめテーブルを追加
+    summary_loss_data = []
+    for f in range(5):
+        summary_loss_data.append({
+            "Fold": f"Fold {f+1}",
+            "CV Loss (Min Val Loss)": round(fold_best_val_losses[f], 4),
+            "Test Loss": round(fold_test_losses[f], 4),
+        })
+    summary_loss_data.append({
+        "Fold": "Mean",
+        "CV Loss (Min Val Loss)": round(mean_cv_loss, 4),
+        "Test Loss": round(mean_test_loss, 4),
+    })
+    df_summary_loss = pd.DataFrame(summary_loss_data)
+
+    # Excel 出力 (OpenPyXL または xlsxwriter を使用)
     if not out_filename.endswith(".xlsx"):
         out_filename += ".xlsx"
     output_path = os.path.join(output_dir, out_filename)
-    res_df.to_excel(output_path, index=False)
-    print(f"✅ 評価結果を出力しました: '{output_path}'")
+
+    with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
+        res_df.to_excel(writer, sheet_name="Evaluation_Metrics", index=False)
+        df_summary_loss.to_excel(
+            writer, sheet_name="Loss_Summary", index=False)
+        df_loss_history.to_excel(
+            writer, sheet_name="Epoch_Loss_Log", index=False)
+
+    print(f"✅ Excel 評価結果を出力しました: '{output_path}'")
+    print("   - シート1: 'Evaluation_Metrics' (主要精度指標)")
+    print("   - シート2: 'Loss_Summary' (Fold別のCV Loss & Test Loss)")
+    print("   - シート3: 'Epoch_Loss_Log' (全エポックのLoss推移ログ)")
 
 
 if __name__ == "__main__":
