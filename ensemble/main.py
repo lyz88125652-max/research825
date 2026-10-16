@@ -10,34 +10,24 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 
-# -------------------------------------------------------------
-# 各モデルファイルの関数をインポート
-# （各モジュール側に train_and_eval 関数を定義しておきます）
-# -------------------------------------------------------------
 try:
     from model_cnn import run_cnn
     from model_lgb import run_lgbm
     from model_rf import run_rf
 except ImportError as e:
-    print(
-        f"⚠️ モジュールのインポートエラー: {e}\n`model_lgb.py`, `model_rf.py`,"
-        " `model_cnn.py` が同じディレクトリにあるか確認してください。"
-    )
+    print(f"⚠️ モジュールのインポートエラー: {e}")
 
 
 def find_best_threshold(y_true, probs, metric="mcc"):
-    """MCC または F1-Score を最大化する最適判定閾値を探索."""
     best_thresh = 0.5
     best_score = -1.0
     for t in np.arange(0.15, 0.70, 0.01):
         preds = (probs >= t).astype(int)
-        if metric == "mcc":
-            score = matthews_corrcoef(y_true, preds)
-        elif metric == "f1":
-            score = f1_score(y_true, preds, zero_division=0)
-        else:
-            score = matthews_corrcoef(y_true, preds)
-
+        score = (
+            matthews_corrcoef(y_true, preds)
+            if metric == "mcc"
+            else f1_score(y_true, preds, zero_division=0)
+        )
         if score > best_score:
             best_score = score
             best_thresh = t
@@ -45,7 +35,6 @@ def find_best_threshold(y_true, probs, metric="mcc"):
 
 
 def calculate_metrics(y_true, probs, threshold):
-    """予測確率と閾値から各種評価指標を算出."""
     preds = (probs >= threshold).astype(int)
     return {
         "ROC-AUC": round(roc_auc_score(y_true, probs), 4),
@@ -66,7 +55,6 @@ def main():
     print("  マルチモデル・アンサンブル評価パイプライン (ESM-2 対応)")
     print("==========================================================")
 
-    # 1. 入力ファイル設定
     train_path = input(
         "学習用Excelファイル名 (デフォルト: trainESMft.xlsx): "
     ).strip()
@@ -89,8 +77,6 @@ def main():
         print("❌ 入力ファイルが存在しません。処理を中断します。")
         return
 
-    # 2. データ読み込み（位置指定: 1列目=配列, 2列目=ラベル, 3列目以降=1280次元）
-    print("\nデータを読み込み中...")
     df_train = pd.read_excel(train_path)
     df_test = pd.read_excel(test_path)
 
@@ -101,25 +87,13 @@ def main():
     X_test = df_test.iloc[:, 2:].values
 
     print(
-        f"Train データ数: {X_train.shape[0]} (正例:"
+        f"\nTrain データ数: {X_train.shape[0]} (正例:"
         f" {np.sum(y_train == 1)}/陰性: {np.sum(y_train == 0)})"
     )
     print(
         f"Test  データ数: {X_test.shape[0]} (正例:"
         f" {np.sum(y_test == 1)}/陰性: {np.sum(y_test == 0)})"
     )
-    print(f"特徴量次元数 : {X_train.shape[1]}")
-
-    # -------------------------------------------------------------
-    # 3. 各単体モデルの実行（個別の python ファイルから呼び出し）
-    # -------------------------------------------------------------
-    # 各関数は dict を返す仕様とします:
-    # {
-    #   "cv_probs": ...,      # Validation (CV) の予測確率
-    #   "test_probs": ...,    # Test データの予測確率
-    #   "train_auc": ...,     # Train AUC の平均値
-    #   "opt_thresh": ...     # 各モデルが決定した CV 最適閾値
-    # }
 
     print("\n>>> [1/3] LightGBM の実行...")
     res_lgb = run_lgbm(X_train, y_train, X_test, y_test)
@@ -130,12 +104,7 @@ def main():
     print("\n>>> [3/3] 1D-CNN (PyTorch) の実行...")
     res_cnn = run_cnn(X_train, y_train, X_test, y_test)
 
-    # -------------------------------------------------------------
-    # 4. アンサンブル (Soft Voting: 確率平均)
-    # -------------------------------------------------------------
     print("\n>>> アンサンブル処理中 (Soft Voting)...")
-
-    # CV 段階でのアンサンブル予測確率と最適閾値決定
     cv_ensemble_probs = (
         res_lgb["cv_probs"] + res_rf["cv_probs"] + res_cnn["cv_probs"]
     ) / 3.0
@@ -143,14 +112,10 @@ def main():
         y_train, cv_ensemble_probs, metric="mcc"
     )
 
-    # Test 段階でのアンサンブル予測確率
     test_ensemble_probs = (
         res_lgb["test_probs"] + res_rf["test_probs"] + res_cnn["test_probs"]
     ) / 3.0
 
-    # -------------------------------------------------------------
-    # 5. 各モデルおよびアンサンブルの各種評価指標算出
-    # -------------------------------------------------------------
     models_data = [
         ("LightGBM", res_lgb, res_lgb["test_probs"], res_lgb["opt_thresh"]),
         ("Random Forest", res_rf, res_rf["test_probs"], res_rf["opt_thresh"]),
@@ -163,10 +128,9 @@ def main():
     ]
 
     results_summary = []
-
     for name, res_dict, t_probs, thresh in models_data:
         metrics = calculate_metrics(y_test, t_probs, thresh)
-        results_summary.append({
+        row = {
             "モデル": name,
             "Train AUC": round(res_dict["train_auc"], 4),
             "ROC-AUC (CV)": round(res_dict["cv_auc"], 4),
@@ -177,9 +141,11 @@ def main():
             "F1-Score (Test)": metrics["F1-Score"],
             "Accuracy (Test)": metrics["Accuracy"],
             "MCC (Test)": metrics["MCC"],
-        })
+        }
+        if "min_cv_loss" in res_dict:
+            row["Min CV Loss"] = round(res_dict["min_cv_loss"], 4)
+        results_summary.append(row)
 
-    # アンサンブルモデルの結果を追加
     ens_metrics = calculate_metrics(
         y_test, test_ensemble_probs, ens_opt_thresh
     )
@@ -203,24 +169,13 @@ def main():
 
     df_results = pd.DataFrame(results_summary)
 
-    # 画面表示
-    print("\n=================== 最終評価結果比較 ===================")
-    print(
-        df_results[
-            [
-                "モデル",
-                "ROC-AUC (Test)",
-                "Sensitivity (Test)",
-                "Precision (Test)",
-                "F1-Score (Test)",
-                "MCC (Test)",
-            ]
-        ].to_string(index=False)
-    )
+    # CNN Loss 履歴データフレームを作成
+    df_cnn_loss = pd.DataFrame({
+        "Epoch": np.arange(1, len(res_cnn["mean_train_losses"]) + 1),
+        "Mean_Train_Loss": res_cnn["mean_train_losses"],
+        "Mean_CV_Loss": res_cnn["mean_val_losses"],
+    })
 
-    # -------------------------------------------------------------
-    # 6. Excelファイルへ出力保存
-    # -------------------------------------------------------------
     output_dir = "eval_results"
     os.makedirs(output_dir, exist_ok=True)
 
@@ -228,7 +183,6 @@ def main():
         out_filename += ".xlsx"
     output_path = os.path.join(output_dir, out_filename)
 
-    # 個別確率なども確認できるよう複数シートで出力
     df_probs = pd.DataFrame({
         "LABEL": y_test,
         "LGBM_Prob": res_lgb["test_probs"],
@@ -241,8 +195,14 @@ def main():
     with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
         df_results.to_excel(writer, sheet_name="Model_Comparison", index=False)
         df_probs.to_excel(writer, sheet_name="Test_Predictions", index=False)
+        df_cnn_loss.to_excel(
+            writer, sheet_name="CNN_Loss_History", index=False)
 
     print(f"\n✅ すべての評価結果を保存しました: '{output_path}'")
+    print("   - シート 1: 'Model_Comparison'")
+    print("   - シート 2: 'Test_Predictions'")
+    print("   - シート 3: 'CNN_Loss_History' (エポック毎の平均Train/CV Loss)")
+    print(f"   - グラフ画像: '{os.path.join(output_dir, 'cnn_loss_curve.png')}'")
 
 
 if __name__ == "__main__":
