@@ -1,94 +1,84 @@
-import numpy as np
 import lightgbm as lgb
+import numpy as np
+from sklearn.metrics import f1_score, matthews_corrcoef, roc_auc_score
 from sklearn.model_selection import StratifiedKFold
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import roc_auc_score, f1_score, matthews_corrcoef
+
+SEED = 42
+
 
 def find_best_threshold(y_true, probs, metric="mcc"):
     best_thresh = 0.5
     best_score = -1.0
     for t in np.arange(0.15, 0.70, 0.01):
         preds = (probs >= t).astype(int)
-        if metric == "mcc":
-            score = matthews_corrcoef(y_true, preds)
-        elif metric == "f1":
-            score = f1_score(y_true, preds, zero_division=0)
-        else:
-            score = matthews_corrcoef(y_true, preds)
-            
+        score = (
+            matthews_corrcoef(y_true, preds)
+            if metric == "mcc"
+            else f1_score(y_true, preds, zero_division=0)
+        )
         if score > best_score:
             best_score = score
             best_thresh = t
     return best_thresh, best_score
 
-def run_lgbm(X_train, y_train, X_test, y_test):
-    """
-    LightGBM 5-Fold Cross Validation & Test Evaluation
-    """
-    scale_pos_weight = np.sum(y_train == 0) / np.sum(y_train == 1)
-    
-    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    
+
+def run_lgb(X_train, y_train, X_test, y_test):
+    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=SEED)
+
     oof_probs = np.zeros(len(y_train))
     test_probs_list = []
     train_aucs = []
     cv_aucs = []
     best_thresholds = []
-    
-    scaler_full = StandardScaler()
-    X_train_s_full = scaler_full.fit_transform(X_train)
-    X_test_s_full = scaler_full.transform(X_test)
-    
+
+    pos_weight = (len(y_train) - np.sum(y_train)) / np.sum(y_train)
+
+    params = {
+        "objective": "binary",
+        "metric": "binary_logloss",
+        "boosting_type": "gbdt",
+        "learning_rate": 0.05,
+        "num_leaves": 31,
+        "random_state": SEED,
+        "scale_pos_weight": pos_weight,
+        "verbose": -1,
+        "n_jobs": -1,
+    }
+
     for fold, (t_idx, v_idx) in enumerate(skf.split(X_train, y_train), 1):
         X_tr, X_val = X_train[t_idx], X_train[v_idx]
         y_tr, y_val = y_train[t_idx], y_train[v_idx]
-        
-        scaler = StandardScaler()
-        X_tr_s = scaler.fit_transform(X_tr)
-        X_val_s = scaler.transform(X_val)
-        
-        # 過学習抑制・正則化設定
-        model = lgb.LGBMClassifier(
-            n_estimators=150,
-            learning_rate=0.02,
-            max_depth=2,
-            num_leaves=3,
-            min_child_samples=40,
-            subsample=0.6,
-            subsample_freq=1,
-            colsample_bytree=0.3,
-            reg_alpha=2.0,
-            reg_lambda=5.0,
-            scale_pos_weight=scale_pos_weight,
-            random_state=42 + fold,
-            n_jobs=-1,
-            verbose=-1
+
+        train_data = lgb.Dataset(X_tr, label=y_tr)
+        val_data = lgb.Dataset(X_val, label=y_val, reference=train_data)
+
+        model = lgb.train(
+            params,
+            train_data,
+            num_boost_round=1000,
+            valid_sets=[train_data, val_data],
+            callbacks=[lgb.early_stopping(stopping_rounds=50, verbose=False)],
         )
-        
-        model.fit(X_tr_s, y_tr)
-        
-        val_probs = model.predict_proba(X_val_s)[:, 1]
-        tr_probs = model.predict_proba(X_tr_s)[:, 1]
-        
+
+        val_probs = model.predict(X_val, num_iteration=model.best_iteration)
         oof_probs[v_idx] = val_probs
-        
+
+        tr_probs = model.predict(X_tr, num_iteration=model.best_iteration)
+
         opt_thresh, _ = find_best_threshold(y_val, val_probs, metric="mcc")
         best_thresholds.append(opt_thresh)
-        
+
         cv_aucs.append(roc_auc_score(y_val, val_probs))
         train_aucs.append(roc_auc_score(y_tr, tr_probs))
-        
-        # Fold ごとの Test 予測
-        test_p = model.predict_proba(X_test_s_full)[:, 1]
-        test_probs_list.append(test_p)
-        
-    mean_opt_thresh = np.mean(best_thresholds)
-    avg_test_probs = np.mean(test_probs_list, axis=0)
-    
+
+        fold_test_probs = model.predict(
+            X_test, num_iteration=model.best_iteration)
+        test_probs_list.append(fold_test_probs)
+
     return {
         "cv_probs": oof_probs,
-        "test_probs": avg_test_probs,
+        "test_probs": np.mean(test_probs_list, axis=0),
         "train_auc": np.mean(train_aucs),
         "cv_auc": np.mean(cv_aucs),
-        "opt_thresh": mean_opt_thresh
+        "opt_thresh": np.mean(best_thresholds),
     }
