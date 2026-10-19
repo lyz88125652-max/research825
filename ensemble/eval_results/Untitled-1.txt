@@ -1,6 +1,21 @@
-/home/user/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:83: UserWarning: CUDA initialization: CUDA unknown error - this may be due to an incorrectly set up environment, e.g. changing env variable CUDA_VISIBLE_DEVICES after program start. Setting the available devices to be zero. (Triggered internally at  ../c10/cuda/CUDAFunctions.cpp:109.)
-  return torch._C._cuda_getDeviceCount() > 0
+>>> [1/3] LightGBM の実行...
 Traceback (most recent call last):
-  File "/home/user/kurata2026/research825ryu/ensemble/main.py", line 16, in <module>
-    from model_lgb import run_lgb
-ImportError: cannot import name 'run_lgb' from 'model_lgb' (/home/user/kurata2026/research825ryu/ensemble/model_lgb.py)
+  File "/home/user/kurata2026/research825ryu/ensemble/main.py", line 226, in <module>
+    main()
+  File "/home/user/kurata2026/research825ryu/ensemble/main.py", line 93, in main
+    res_lgb = run_lgb(X_train, y_train, X_test, y_test)
+  File "/home/user/kurata2026/research825ryu/ensemble/model_lgb.py", line 55, in run_lgb
+    model = lgb.train(
+  File "/home/user/.local/lib/python3.10/site-packages/lightgbm/engine.py", line 297, in train
+    booster = Booster(params=params, train_set=train_set)
+  File "/home/user/.local/lib/python3.10/site-packages/lightgbm/basic.py", line 3656, in __init__
+    train_set.construct()
+  File "/home/user/.local/lib/python3.10/site-packages/lightgbm/basic.py", line 2590, in construct
+    self._lazy_init(
+  File "/home/user/.local/lib/python3.10/site-packages/lightgbm/basic.py", line 2187, in _lazy_init
+    self.__init_from_np2d(data, params_str, ref_dataset)
+  File "/home/user/.local/lib/python3.10/site-packages/lightgbm/basic.py", line 2316, in __init_from_np2d
+    data, layout = _np2d_to_np1d(mat)
+  File "/home/user/.local/lib/python3.10/site-packages/lightgbm/basic.py", line 204, in _np2d_to_np1d
+    data = np.asarray(mat, dtype=dtype, order=order)
+ValueError: could not convert string to float: 'MTKGILLGDKFPDFRAETNEGFIPSFYDWIGKDSWAILFSHPRDFTPVCTTELARLVQLAPEFNKRNVKLIGLSCDSAESHRKWVDDIMAVCKMKCNDGDTCCSGNKLPFPIIADENRFLATELGMMDPDERDENGNALTARCVFIIGPEKTLKLSILYPATTGRNFDEILRVVDSLQLTAVKLVATPVDWKDGDDCVVLPTIDDTEAKKLFGEKINTIELPSGKHYLRMVAHPK'
