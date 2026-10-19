@@ -46,22 +46,31 @@ def calculate_metrics(y_true, probs, thresh=0.5):
 
 
 def load_data(train_file, test_file):
-    """Excel ファイルからデータとラベルを読み込む"""
+    """Excel ファイルからデータとラベルを読み込む（文字列列を自動排除）"""
     print(f"\n学習データの読み込み中: {train_file}")
     df_train = pd.read_excel(train_file)
     y_train = df_train["LABEL"].values
-    X_train = df_train.drop(columns=["LABEL"]).values
+
+    # LABEL 列と、アミノ酸配列などの文字列列を除外して数値特徴量のみ抽出
+    X_train_df = df_train.drop(columns=["LABEL"]).select_dtypes(
+        include=[np.number]
+    )
+    X_train = X_train_df.values
 
     print(f"テストデータの読み込み中: {test_file}")
     df_test = pd.read_excel(test_file)
     y_test = df_test["LABEL"].values
-    X_test = df_test.drop(columns=["LABEL"]).values
+
+    # テストデータも同様に数値特徴量のみ抽出（列順を学習データに合わせる）
+    X_test_df = df_test[X_train_df.columns]
+    X_test = X_test_df.values
 
     pos_tr = np.sum(y_train == 1)
     neg_tr = np.sum(y_train == 0)
     pos_te = np.sum(y_test == 1)
     neg_te = np.sum(y_test == 0)
 
+    print(f"特徴量数: {X_train.shape[1]} 次元")
     print(f"Train データ数: {len(y_train)} (正例: {pos_tr} / 陰性: {neg_tr})")
     print(f"Test  データ数: {len(y_test)} (正例: {pos_te} / 陰性: {neg_te})")
 
@@ -102,8 +111,9 @@ def main():
 
     # 4. Soft Voting アンサンブル
     print("\n>>> アンサンブル処理中 (Soft Voting)...")
-    ens_cv_probs = (res_lgb["cv_probs"] +
-                    res_rf["cv_probs"] + res_cnn["cv_probs"]) / 3.0
+    ens_cv_probs = (
+        res_lgb["cv_probs"] + res_rf["cv_probs"] + res_cnn["cv_probs"]
+    ) / 3.0
     ens_test_probs = (
         res_lgb["test_probs"] + res_rf["test_probs"] + res_cnn["test_probs"]
     ) / 3.0
@@ -132,11 +142,13 @@ def main():
 
     # 各モデルの指標算出（テストデータ）
     m_lgb = calculate_metrics(
-        y_test, res_lgb["test_probs"], res_lgb["opt_thresh"])
+        y_test, res_lgb["test_probs"], res_lgb["opt_thresh"]
+    )
     m_rf = calculate_metrics(
         y_test, res_rf["test_probs"], res_rf["opt_thresh"])
     m_cnn = calculate_metrics(
-        y_test, res_cnn["test_probs"], res_cnn["opt_thresh"])
+        y_test, res_cnn["test_probs"], res_cnn["opt_thresh"]
+    )
     m_ens = calculate_metrics(y_test, ens_test_probs, best_thresh_ens)
 
     # 結果テーブルの作成
