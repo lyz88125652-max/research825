@@ -1,15 +1,6 @@
->>> アンサンブル処理中 (Soft Voting)...
+/home/user/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:83: UserWarning: CUDA initialization: CUDA unknown error - this may be due to an incorrectly set up environment, e.g. changing env variable CUDA_VISIBLE_DEVICES after program start. Setting the available devices to be zero. (Triggered internally at  ../c10/cuda/CUDAFunctions.cpp:109.)
+  return torch._C._cuda_getDeviceCount() > 0
 Traceback (most recent call last):
-  File "/home/user/kurata2026/research825ryu/ensemble/main.py", line 209, in <module>
-    main()
-  File "/home/user/kurata2026/research825ryu/ensemble/main.py", line 132, in main
-    metrics = calculate_metrics(y_test, t_probs, thresh)
-  File "/home/user/kurata2026/research825ryu/ensemble/main.py", line 40, in calculate_metrics
-    "ROC-AUC": round(roc_auc_score(y_true, probs), 4),
-  File "/home/user/.local/lib/python3.10/site-packages/sklearn/metrics/_ranking.py", line 572, in roc_auc_score
-    return _average_binary_score(
-  File "/home/user/.local/lib/python3.10/site-packages/sklearn/metrics/_base.py", line 75, in _average_binary_score
-    return binary_metric(y_true, y_score, sample_weight=sample_weight)
-  File "/home/user/.local/lib/python3.10/site-packages/sklearn/metrics/_ranking.py", line 339, in _binary_roc_auc_score
-    raise ValueError(
-ValueError: Only one class present in y_true. ROC AUC score is not defined in that case.
+  File "/home/user/kurata2026/research825ryu/ensemble/main.py", line 16, in <module>
+    from model_lgb import run_lgb
+ImportError: cannot import name 'run_lgb' from 'model_lgb' (/home/user/kurata2026/research825ryu/ensemble/model_lgb.py)
