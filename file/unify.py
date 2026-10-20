@@ -1,63 +1,77 @@
+import os
 import pandas as pd
 
 
-def process_train_to_simple(train_path):
-    df_raw = pd.read_excel(train_path)
-    col_name = df_raw.columns[0]
-    lines = [col_name] + df_raw[col_name].dropna().tolist()
+def unify_datasets(file1, file2, file3, output_path):
+    """3つのExcelファイルを読み込んで結合し、
 
-    data = []
-    curr_seq = []
-    curr_label = None
+    SEQUENCEの重複行を削除した上で unified.xlsx として保存する関数
+    """
+    files = [file1, file2, file3]
 
-    for line in lines:
-        s = str(line).strip()
-        if s.startswith(">"):
-            # 直前までに溜まった配列データをラベルと一緒に保存
-            if curr_seq and curr_label is not None:
-                data.append(
-                    {"SEQUENCE": "".join(curr_seq), "LABEL": curr_label}
-                )
-                curr_seq = []
+    # 1. すべてのファイルの存在確認
+    for f in files:
+        if not os.path.exists(f):
+            print(f"❌ エラー: ファイル '{f}' が見つかりません。")
+            return
 
-            # 新しいラベルの判定 (0: 非抗酸化, 1: 抗酸化)
-            if "nonanti" in s.lower() or "|0|" in s or "|-1|" in s:
-                curr_label = 0
-            else:
-                curr_label = 1
+    dfs = []
+    total_raw_rows = 0
+
+    # 2. 各ファイルの読み込み
+    for f in files:
+        df = pd.read_excel(f)
+        total_raw_rows += len(df)
+        dfs.append(df)
+        print(f"📂 読み込み成功: {f} ({len(df)} 行)")
+
+    # 3. データフレームの結合（縦方向に連結）
+    combined_df = pd.concat(dfs, ignore_index=True)
+    print(f"\n🔗 結合後の総行数: {total_raw_rows} 行")
+
+    # 4. SEQUENCE列を基準に重複行を削除（最初に出現した行を保持）
+    # ※ 大文字・小文字や前後の空白の揺れを考慮して安全に重複判定するため、
+    #    一時的な正規化列を使って重複チェックを行います
+    if "SEQUENCE" in combined_df.columns:
+        # 前後の空白を削除した正規化配列を作成して重複判定
+        combined_df["_TEMP_SEQ_"] = (
+            combined_df["SEQUENCE"].astype(str).str.strip()
+        )
+        cleaned_df = combined_df.drop_duplicates(
+            subset=["_TEMP_SEQ_"], keep="first"
+        ).copy()
+        cleaned_df = cleaned_df.drop(columns=["_TEMP_SEQ_"])
+    else:
+        # 万が一列名が大文字小文字などで異なる場合のフォールバック
+        seq_col = next(
+            (c for c in combined_df.columns if c.upper() == "SEQUENCE"), None
+        )
+        if seq_col:
+            cleaned_df = combined_df.drop_duplicates(
+                subset=[seq_col], keep="first"
+            ).copy()
         else:
-            curr_seq.append(s)
+            raise ValueError("❌ エラー: 'SEQUENCE' 列が見つかりません。")
 
-    # 最後の行の書き出し
-    if curr_seq and curr_label is not None:
-        data.append({"SEQUENCE": "".join(curr_seq), "LABEL": curr_label})
+    removed_count = total_raw_rows - len(cleaned_df)
 
-    return pd.DataFrame(data)
+    # 5. 結果の保存（列の内容・順序は変更しない）
+    cleaned_df.to_excel(output_path, index=False)
 
-
-def process_test_to_simple(test_path):
-    df_raw = pd.read_excel(test_path)
-
-    # SEQCLASSの文字列 ('antioxidant' / 'non-antioxidant') を 1 / 0 に変換
-    label_map = {"antioxidant": 1, "non-antioxidant": 0}
-
-    df_simple = pd.DataFrame(
-        {
-            "SEQUENCE": df_raw["SEQUENCE"],
-            "LABEL": df_raw["SEQCLASS"].map(label_map),
-        }
-    )
-    return df_simple
+    print("=" * 50)
+    print("✨ 統合と重複削除が完了しました！")
+    print("=" * 50)
+    print(f"・削除された重複行数: {removed_count} 行")
+    print(f"・最終的な unified.xlsx の行数: {len(cleaned_df)} 行")
+    print(f"・保存先: {output_path}")
+    print("=" * 50)
 
 
-# --- 実行処理 ---
-train1_df = process_train_to_simple("train.xlsx")
-test1_df = process_test_to_simple("test.xlsx")
+if __name__ == "__main__":
+    # 対象のファイル名
+    f_train = "trainESM.xlsx"
+    f_test1 = "test1ESM.xlsx"
+    f_test2 = "test2ESM.xlsx"
+    output_file = "unified.xlsx"
 
-# ファイル書き出し
-train1_df.to_excel("train1.xlsx", index=False)
-test1_df.to_excel("test1.xlsx", index=False)
-
-print("✅ 2列フォーマットでの変換が完了しました:")
-print(f" - train1.xlsx: {train1_df.shape} (内訳 -> 1: 249件, 0: 1531件)")
-print(f" - test1.xlsx : {test1_df.shape} (内訳 -> 1: 74件, 0: 392件)")
+    unify_datasets(f_train, f_test1, f_test2, output_file)

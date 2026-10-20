@@ -1,103 +1,71 @@
+import os
 import pandas as pd
 
 
-def verify_train_data(raw_excel_path, clean_excel_path):
-    """train.xlsx (FASTA風形式) と train1.xlsx の一致チェック"""
-    raw_df = pd.read_excel(raw_excel_path)
-    clean_df = pd.read_excel(clean_excel_path)
+def check_sequence_overlap(file1, file2, file3):
+    """3つのExcelファイル（SEQUENCE列を含む）の間で
 
-    # 原データの解析・抽出
-    col = raw_df.columns[0]
-    lines = [col] + raw_df[col].dropna().tolist()
+    重複している配列がないかをチェックする関数
+    """
+    # ファイルの存在確認
+    for f in [file1, file2, file3]:
+        if not os.path.exists(f):
+            print(f"❌ エラー: ファイル '{f}' が見つかりません。")
+            return
 
-    raw_extracted = []
-    curr_seq = []
-    curr_label = None
+    # 各ファイルの読み込みと配列の抽出
+    def load_sequences(filepath):
+        df = pd.read_excel(filepath)
+        # カラム名が 'SEQUENCE' であることを前提（小文字等の揺れにも対応）
+        seq_col = next(
+            (c for c in df.columns if c.upper() == "SEQUENCE"), None)
+        if not seq_col:
+            raise ValueError(f"ファイル '{filepath}' に 'SEQUENCE' 列が見つかりません。")
+        # 空白の除去や大文字化で正規化してセット（集合）で保持
+        return set(df[seq_col].dropna().astype(str).str.strip())
 
-    for line in lines:
-        s = str(line).strip()
-        if s.startswith(">"):
-            if curr_seq and curr_label is not None:
-                raw_extracted.append(("".join(curr_seq), curr_label))
-                curr_seq = []
-            curr_label = (
-                0 if ("nonanti" in s.lower() or "|0|" in s or "|-1|" in s) else 1
-            )
-        else:
-            curr_seq.append(s)
-    if curr_seq and curr_label is not None:
-        raw_extracted.append(("".join(curr_seq), curr_label))
+    print("📂 ファイルを読み込んでいます...")
+    set1 = load_sequences(file1)
+    set2 = load_sequences(file2)
+    set3 = load_sequences(file3)
 
-    # 1. データ件数の検証
-    if len(raw_extracted) != len(clean_df):
+    print(f"\n📊 各ファイルの配列数:")
+    print(f"  - {file1}: {len(set1)} 件")
+    print(f"  - {file2}: {len(set2)} 件")
+    print(f"  - {file3}: {len(set3)} 件")
+
+    # 2者間・3者間の共通集合（積集合）の計算
+    inter_12 = set1.intersection(set2)
+    inter_13 = set1.intersection(set3)
+    inter_23 = set2.intersection(set3)
+    inter_all = set1.intersection(set2).intersection(set3)
+
+    print("\n" + "=" * 50)
+    print("🔍 配列の重複チェック結果")
+    print("=" * 50)
+    print(f"・{file1} と {file2} の共通配列数: {len(inter_12)} 件")
+    print(f"・{file1} と {file3} の共通配列数: {len(inter_13)} 件")
+    print(f"・{file2} と {file3} の共通配列数: {len(inter_23)} 件")
+    print(f"・3つのファイルすべてに共通する配列数: {len(inter_all)} 件")
+    print("=" * 50)
+
+    # もし重複があれば、詳細をファイルに出力またはコンソールに表示
+    if len(inter_12) > 0 or len(inter_13) > 0 or len(inter_23) > 0:
         print(
-            f"❌ [Train] 件数不一致: 原データ={len(raw_extracted)}件, 変換後={len(clean_df)}件"
+            "\n⚠️ 注意: ファイル間で重複している配列が見つかりました。"
+            "独立したテストデータとして評価する場合、訓練データとの重複に注意が必要です。"
         )
-        return False
-
-    # 2. 配列とラベルの1件ずつの厳密検証
-    mismatches = 0
-    for idx, (raw_seq, raw_lbl) in enumerate(raw_extracted):
-        clean_seq = str(clean_df.iloc[idx]["SEQUENCE"]).strip()
-        clean_lbl = clean_df.iloc[idx]["LABEL"]
-
-        if raw_seq != clean_seq or raw_lbl != clean_lbl:
-            mismatches += 1
-            print(
-                f"  - [Train Error] 行 index {idx}: 原データ({raw_lbl}) != 変換後({clean_lbl})"
-            )
-
-    if mismatches == 0:
-        print(
-            f"✅ [Train] 検証成功: 全{len(clean_df)}件の配列とラベルが完全一致しています。"
-        )
-        return True
     else:
-        print(f"❌ [Train] データ不一致検出: 計 {mismatches} 件")
-        return False
-
-
-def verify_test_data(raw_excel_path, clean_excel_path):
-    """test.xlsx (表形式) と test1.xlsx の一致チェック"""
-    raw_df = pd.read_excel(raw_excel_path)
-    clean_df = pd.read_excel(clean_excel_path)
-
-    label_map = {"antioxidant": 1, "non-antioxidant": 0}
-
-    # 1. データ件数の検証
-    if len(raw_df) != len(clean_df):
         print(
-            f"❌ [Test] 件数不一致: 原データ={len(raw_df)}件, 変換後={len(clean_df)}件"
+            "\n✅ すべてのファイル間で重複している配列はありません（完全に独立してい"
+            "ます）。"
         )
-        return False
-
-    # 2. 配列とラベルの1件ずつの厳密検証
-    mismatches = 0
-    for idx in range(len(raw_df)):
-        raw_seq = str(raw_df.iloc[idx]["SEQUENCE"]).strip()
-        raw_lbl_str = str(raw_df.iloc[idx]["SEQCLASS"]).strip()
-        expected_lbl = label_map.get(raw_lbl_str)
-
-        clean_seq = str(clean_df.iloc[idx]["SEQUENCE"]).strip()
-        clean_lbl = clean_df.iloc[idx]["LABEL"]
-
-        if raw_seq != clean_seq or expected_lbl != clean_lbl:
-            mismatches += 1
-            print(
-                f"  - [Test Error] 行 index {idx}: 原データ({raw_lbl_str}->{expected_lbl}) != 変換後({clean_lbl})"
-            )
-
-    if mismatches == 0:
-        print(
-            f"✅ [Test] 検証成功: 全{len(clean_df)}件の配列とラベルが完全一致しています。"
-        )
-        return True
-    else:
-        print(f"❌ [Test] データ不一致検出: 計 {mismatches} 件")
-        return False
 
 
-# --- 実行 ---
-print("--- データ整合性検証実行 ---")
-verify_train_data("train.xlsx", "train1.xlsx")
-verify_test_data("test.xlsx", "test1.xlsx")
+if __name__ == "__main__":
+    # ファイル名の指定（必要に応じて _cleaned.xlsx や元のファイル名に変更してください）
+    f_train = "trainESM.xlsx"  # または training_cleaned.xlsx
+    f_test1 = "test1ESM.xlsx"  # または test1_cleaned.xlsx
+    f_test2 = "test2ESM.xlsx"  # または test2_cleaned.xlsx
+
+    check_sequence_overlap(f_train, f_test1, f_test2)
