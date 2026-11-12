@@ -1,0 +1,23 @@
+{
+  "model": "facebook/esm2_t33_650M_UR50D",
+  "layer": 33,
+  "features": 1280,
+  "pooling": "mean over residue tokens; exclude BOS, EOS and padding",
+  "input": "/home/user/kurata2026/research825ryu/data/training_cv.xlsx",
+  "output": "/home/user/kurata2026/research825ryu/data/training_cv_esm2_650M.npz",
+  "accepted": 8720,
+  "skipped": 39,
+  "label_counts": {
+    "1": 1003,
+    "2": 3306,
+    "3": 4411
+  },
+  "labels": {
+    "1": "antioxidant",
+    "2": "antimicrobial",
+    "3": "toxic"
+  },
+  "invalid_policy": "skip",
+  "device": "cpu",
+  "sequence_conversion": "none; lowercase and modification notation unsupported"
+}
