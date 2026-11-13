@@ -1,7 +1,6 @@
 __pycache__/
 *.py[cod]
 .venv/
-results/
 .DS_Store
 .vscode/
 ~$*.xlsx

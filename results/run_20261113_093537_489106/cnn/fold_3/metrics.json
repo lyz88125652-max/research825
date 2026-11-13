@@ -1,0 +1,20 @@
+{
+  "fold": 3,
+  "train_size": 5198,
+  "test_size": 1300,
+  "accuracy": 0.8215384615384616,
+  "balanced_accuracy": 0.8502708241838676,
+  "precision_macro": 0.805907599131784,
+  "recall_macro": 0.8502708241838676,
+  "f1_macro": 0.8186474699877905,
+  "f1_weighted": 0.8221958629428485,
+  "mcc": 0.723495978377018,
+  "log_loss": 0.4262947986088651,
+  "roc_auc_ovr_macro": 0.9541923864682017,
+  "training": {
+    "selected_epochs": 15,
+    "device": "cpu",
+    "inner_train_rows": 4158,
+    "inner_validation_rows": 1040
+  }
+}
