@@ -1,0 +1,17 @@
+{
+  "fold": 5,
+  "train_size": 5779,
+  "test_size": 1445,
+  "accuracy": 0.8692041522491349,
+  "balanced_accuracy": 0.8755930957283136,
+  "precision_macro": 0.8648428518293096,
+  "recall_macro": 0.8755930957283136,
+  "f1_macro": 0.8686759221103246,
+  "f1_weighted": 0.8685430165546006,
+  "mcc": 0.7813507256177785,
+  "log_loss": 0.3585060061799302,
+  "roc_auc_ovr_macro": 0.9672708148100927,
+  "training": {
+    "n_estimators": 300
+  }
+}
