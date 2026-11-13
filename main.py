@@ -61,7 +61,7 @@ def check_dependencies(args):
         for name in sorted(modules):
             importlib.import_module(name)
         return
-    modules.update({"sklearn", "joblib"})
+    modules.update({"sklearn", "joblib", "matplotlib"})
     if "cnn" in args.models or args.reextract or not args.features.exists():
         modules.add("torch")
     if args.reextract or not args.features.exists():
@@ -85,8 +85,8 @@ def main(argv=None):
     args = parse_args(argv)
     try:
         check_dependencies(args)
-        from ml_pipeline.data import load_extractor, load_features, audit_labels, make_splits
-        from ml_pipeline.evaluation import evaluate_model, write_csv, write_json
+        from ml_pipeline.data import load_extractor, load_features, audit_labels, make_splits, make_holdout
+        from ml_pipeline.evaluation import evaluate_model, evaluate_holdout, write_csv, write_json
         import numpy as np
 
         output = args.output_dir / datetime.now().strftime("run_%Y%m%d_%H%M%S_%f")
@@ -108,6 +108,14 @@ def main(argv=None):
         if args.prepare_only:
             print(f"Eligible rows: {audit['eligible_training_rows']}; audit saved: {output}")
             return 0
+        eligible = [r for r in accepted if r[0] in kept_rows]
+        _, test_indices = make_holdout(
+            np.asarray([r[2] - 1 for r in eligible]),
+            np.asarray([r[1] for r in eligible]), args.seed)
+        test_rows = {eligible[i][0] for i in test_indices}
+        write_csv(output / "holdout_assignments.csv", ["excel_row", "sequence", "label", "split"],
+                  ({"excel_row": r[0], "sequence": r[1], "label": r[2],
+                    "split": "test" if r[0] in test_rows else "training"} for r in eligible))
         if args.reextract or not args.features.exists():
             print("Extracting ESM-2 650M embeddings before training...", flush=True)
             subprocess.run([sys.executable, str(ROOT / "ESM-2.py"),
@@ -117,6 +125,9 @@ def main(argv=None):
         X, y, sequences, rows = load_features(args.features, args.input, extractor)
         keep = np.asarray([int(row) in kept_rows for row in rows])
         X, y, sequences, rows = X[keep], y[keep], sequences[keep], rows[keep]
+        is_test = np.asarray([int(row) in test_rows for row in rows])
+        X_test, y_test, test_sequences, heldout_rows = X[is_test], y[is_test], sequences[is_test], rows[is_test]
+        X, y, sequences, rows = X[~is_test], y[~is_test], sequences[~is_test], rows[~is_test]
         splits = make_splits(y, sequences, args.folds, args.seed)
         fold_ids = {}
         for fold, (_, test) in enumerate(splits, start=1):
@@ -125,7 +136,7 @@ def main(argv=None):
                   ({"excel_row": int(rows[i]), "sequence": str(sequences[i]),
                     "label": int(y[i]) + 1, "fold": fold_ids[i]} for i in range(len(y))))
         versions = {}
-        for package in ("numpy", "scikit-learn", "torch", "lightgbm", "transformers", "openpyxl"):
+        for package in ("numpy", "scikit-learn", "torch", "lightgbm", "transformers", "openpyxl", "matplotlib"):
             try:
                 versions[package] = importlib.metadata.version(package)
             except importlib.metadata.PackageNotFoundError:
@@ -137,6 +148,11 @@ def main(argv=None):
         config = {key: str(value) if isinstance(value, Path) else value
                   for key, value in vars(args).items()}
         config.update({"audit": audit, "training_rows": len(y), "feature_dimensions": X.shape[1],
+                       "test_rows": len(y_test), "holdout_fraction_requested": 0.1,
+                       "holdout_fraction_actual": len(y_test) / (len(y) + len(y_test)),
+                       "training_label_counts": {int(c) + 1: int((y == c).sum()) for c in range(3)},
+                       "test_label_counts": {int(c) + 1: int((y_test == c).sum()) for c in range(3)},
+                       "holdout_method": "random stratified exact-sequence groups; original class proportions",
                        "feature_sha256": digest.hexdigest(), "versions": versions,
                        "task": "multiclass; labels describe source annotations",
                        "split": "StratifiedGroupKFold grouped by exact sequence",
@@ -144,6 +160,7 @@ def main(argv=None):
                        "cnn_input": "pooled ESM embedding coordinates, not residue positions"})
         write_json(output / "run_config.json", config)
         print(f"Training rows: {len(y)}; features: {X.shape[1]}; results: {output}", flush=True)
+        print(f"Independent test rows: {len(y_test)} (excluded from CV)", flush=True)
         registry = {"cnn": "ml_pipeline.cnn", "rf": "ml_pipeline.random_forest",
                     "lightgbm": "ml_pipeline.lightgbm_model"}
         summaries = []
@@ -152,6 +169,13 @@ def main(argv=None):
             summaries.append(evaluate_model(name, trainer, X, y, sequences, rows,
                                             splits, output, args))
             write_csv(output / "model_comparison.csv", list(summaries[0]), summaries)
+        # Finish CV for every model before evaluating the independent test.
+        for name in args.models:
+            trainer = importlib.import_module(registry[name]).train_predict
+            evaluate_holdout(name, trainer, X, y, sequences, X_test, y_test,
+                             test_sequences, heldout_rows, output, args)
+        from ml_pipeline.reporting import generate_reports
+        generate_reports(output, args.models)
         print("\nCV results (mean ± sample standard deviation):", flush=True)
         for result in summaries:
             print(f"  {result['model']:10s} accuracy={result['accuracy_mean']:.4f} "

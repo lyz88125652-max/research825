@@ -102,10 +102,13 @@ def train_predict(X_train, y_train, X_test, groups, output, args, seed):
     history = []
     for epoch in range(1, args.cnn_epochs + 1):
         train_loss = fit_epoch(loader, model, criterion, optimizer)
+        train_probs = probabilities(model, scaler, X_train[fit])
+        train_eval_loss = float(-np.log(np.clip(train_probs[np.arange(len(fit)),
+                                                           y_train[fit]], 1e-15, 1)).mean())
         probs = probabilities(model, scaler, X_train[valid])
         validation_loss = float(-np.log(np.clip(probs[np.arange(len(valid)),
                                                      y_train[valid]], 1e-15, 1)).mean())
-        history.append(["selection", epoch, train_loss, validation_loss])
+        history.append(["selection", epoch, train_loss, validation_loss, train_eval_loss])
         print(f"    CNN epoch {epoch}: train_loss={train_loss:.4f} "
               f"validation_loss={validation_loss:.4f}", flush=True)
         if validation_loss < best_loss - 1e-5:
@@ -120,7 +123,7 @@ def train_predict(X_train, y_train, X_test, groups, output, args, seed):
     scaler, loader, model, criterion, optimizer = initialize(X_train, y_train)
     for epoch in range(1, best_epoch + 1):
         loss = fit_epoch(loader, model, criterion, optimizer)
-        history.append(["refit", epoch, loss, ""])
+        history.append(["refit", epoch, loss, "", ""])
     probs = probabilities(model, scaler, X_test)
     torch.save({
         "state_dict": {k: v.detach().cpu() for k, v in model.state_dict().items()},
@@ -130,7 +133,7 @@ def train_predict(X_train, y_train, X_test, groups, output, args, seed):
     }, output / "model.pt")
     with (output / "history.csv").open("w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle)
-        writer.writerow(["phase", "epoch", "train_loss", "validation_loss"])
+        writer.writerow(["phase", "epoch", "train_loss", "validation_loss", "train_eval_loss"])
         writer.writerows(history)
     return probs, {"selected_epochs": best_epoch, "device": str(device),
                    "inner_train_rows": len(fit), "inner_validation_rows": len(valid)}

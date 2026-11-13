@@ -5,6 +5,7 @@ All learning tests use synthetic features, never scientific benchmark scores.
 
 import csv
 import json
+import inspect
 import os
 from pathlib import Path
 import subprocess
@@ -15,13 +16,27 @@ import unittest
 import numpy as np
 from openpyxl import Workbook, load_workbook
 
-from ml_pipeline.data import audit_labels, load_features, make_splits
+from ml_pipeline.data import audit_labels, load_features, make_splits, make_holdout
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class PipelineTests(unittest.TestCase):
+    def test_stratified_independent_holdout(self):
+        y = np.repeat(np.arange(3), 80)
+        groups = np.asarray([f"c{c}_s{i // 2}" for c in range(3) for i in range(80)])
+        train, test = make_holdout(y, groups, 42)
+        self.assertFalse(set(groups[train]) & set(groups[test]))
+        self.assertEqual(len(test), 24)
+        np.testing.assert_array_equal(np.bincount(y[test]), [8, 8, 8])
+        np.testing.assert_array_equal(np.sort(np.r_[train, test]), np.arange(len(y)))
+        for actual, expected in zip(make_holdout(y, groups, 42), (train, test)):
+            np.testing.assert_array_equal(actual, expected)
+        for fit, valid in make_splits(y[train], groups[train], 5, 42):
+            self.assertFalse(set(groups[train][fit]) & set(groups[test]))
+            self.assertFalse(set(groups[train][valid]) & set(groups[test]))
+
     def test_group_disjoint_and_complete(self):
         y = np.repeat(np.arange(3), 24)
         groups = np.asarray([f"class{c}_seq{i // 2}" for c in range(3) for i in range(24)])
@@ -106,6 +121,23 @@ class PipelineTests(unittest.TestCase):
             )
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
             output = next((directory / "results").glob("run_*"))
+            self.assertTrue((output / "summary.xlsx").exists())
+            self.assertTrue((output / "cnn/loss_curves.png").exists())
+            config = json.loads((output / "run_config.json").read_text())
+            self.assertEqual(config['training_rows'] + config['test_rows'], 52)
+            self.assertEqual(config['test_rows'], 6)
+            report = load_workbook(output / 'summary.xlsx', read_only=True)
+            report_rows = list(report['Summary'].values)
+            test_summaries = [dict(zip(report_rows[0], r)) for r in report_rows[1:]
+                              if r[1] == 'Independent_test']
+            self.assertEqual({r['model'] for r in test_summaries}, {'cnn', 'rf', 'lightgbm'})
+            self.assertTrue(all(r['n'] == 6 for r in test_summaries))
+            report.close()
+            self.assertTrue((output / 'cnn/final_model/loss_curve.png').exists())
+            with (output / "holdout_assignments.csv").open() as handle:
+                holdout = list(csv.DictReader(handle))
+            reserved = {r['excel_row'] for r in holdout if r['split'] == 'test'}
+            self.assertEqual(len(reserved), 6)
             audit = json.loads((output / "data_audit.json").read_text())
             self.assertEqual(audit["conflicting_sequences"], 1)
             self.assertEqual(audit["eligible_training_rows"], 52)
@@ -116,7 +148,15 @@ class PipelineTests(unittest.TestCase):
                 folder = output / name
                 with (folder / "predictions.csv").open() as handle:
                     predictions = list(csv.DictReader(handle))
-                self.assertEqual(len(predictions), 52)
+                self.assertEqual(len(predictions), 46)
+                with (folder / "test_predictions.csv").open() as handle:
+                    test_predictions = list(csv.DictReader(handle))
+                self.assertEqual({r['excel_row'] for r in test_predictions}, reserved)
+                self.assertFalse(reserved & {r['excel_row'] for r in predictions})
+                self.assertFalse({r['sequence'] for r in test_predictions} &
+                                 {r['sequence'] for r in predictions})
+                self.assertEqual({r['true_label'] for r in test_predictions}, {'1', '2', '3'})
+                self.assertTrue(list((folder / 'final_model').glob('model.*')))
                 self.assertNotIn(sequences[0], [r["sequence"] for r in predictions])
                 assignments = [(r["excel_row"], r["fold"]) for r in predictions]
                 if reference_folds is None:
@@ -133,7 +173,10 @@ class PipelineTests(unittest.TestCase):
                 if name == "cnn":
                     import torch
                     from ml_pipeline.cnn import build_network
-                    checkpoint = torch.load(folder / "fold_1/model.pt", weights_only=True)
+                    # This checkpoint was generated inside this test. Older
+                    # installed PyTorch versions do not support weights_only.
+                    options = {"weights_only": True} if "weights_only" in inspect.signature(torch.load).parameters else {}
+                    checkpoint = torch.load(folder / "fold_1/model.pt", **options)
                     model = build_network()
                     model.load_state_dict(checkpoint["state_dict"])
                     self.assertEqual(checkpoint["input_dim"], 1280)

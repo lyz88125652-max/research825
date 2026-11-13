@@ -42,6 +42,43 @@ def metrics(y, probabilities):
     }
 
 
+def evaluate_holdout(name, trainer, X, y, sequences, X_test, y_test,
+                     test_sequences, test_rows, output, args):
+    """Fit on the entire training partition, then evaluate reserved test once."""
+    from sklearn.metrics import classification_report, confusion_matrix
+
+    folder = output / name / "final_model"
+    folder.mkdir()
+    print(f"[{name}] final training={len(y)} independent test={len(y_test)}", flush=True)
+    probs, details = trainer(X, y, X_test, sequences, folder, args, args.seed)
+    probs = np.asarray(probs, dtype=np.float64)
+    if (probs.shape != (len(y_test), 3) or not np.isfinite(probs).all()
+            or np.any(probs < 0) or np.any(probs > 1)
+            or not np.allclose(probs.sum(axis=1), 1, atol=1e-5)):
+        raise ValueError(f"{name}: invalid independent test probabilities.")
+    probs /= probs.sum(axis=1, keepdims=True)
+    predictions = probs.argmax(axis=1)
+    result = {"train_size": len(y), "test_size": len(y_test),
+              **metrics(y_test, probs), "training": details}
+    write_json(folder / "metrics.json", result)
+    write_json(output / name / "test_metrics.json", result)
+    write_csv(output / name / "test_predictions.csv",
+              ["excel_row", "sequence", "true_label", "predicted_label",
+               "prob_label_1", "prob_label_2", "prob_label_3"],
+              ({"excel_row": int(test_rows[i]), "sequence": str(test_sequences[i]),
+                "true_label": int(y_test[i]) + 1, "predicted_label": int(predictions[i]) + 1,
+                **{f"prob_label_{c + 1}": float(probs[i, c]) for c in range(3)}}
+               for i in range(len(y_test))))
+    matrix = confusion_matrix(y_test, predictions, labels=[0, 1, 2])
+    write_csv(output / name / "test_confusion_matrix.csv", ["true_label", "pred_1", "pred_2", "pred_3"],
+              ({"true_label": c + 1, **{f"pred_{j + 1}": int(matrix[c, j]) for j in range(3)}}
+               for c in range(3)))
+    write_json(output / name / "test_classification_report.json",
+               classification_report(y_test + 1, predictions + 1, labels=[1, 2, 3],
+                                     output_dict=True, zero_division=0))
+    return result
+
+
 def evaluate_model(name, train_predict, X, y, sequences, rows, splits, output, args):
     from sklearn.metrics import classification_report, confusion_matrix
 

@@ -111,3 +111,25 @@ def make_splits(y, groups, folds, seed):
     if not np.all(seen == 1):
         raise ValueError("Each row must appear in exactly one held-out fold.")
     return splits
+
+
+def make_holdout(y, groups, seed):
+    """Reserve ~10% by class, keeping every exact sequence in one partition."""
+    from sklearn.model_selection import train_test_split
+
+    unique, inverse = np.unique(groups, return_inverse=True)
+    labels = [np.unique(y[inverse == i]) for i in range(len(unique))]
+    if all(len(values) == 1 for values in labels):
+        train_groups, test_groups = train_test_split(
+            np.arange(len(unique)), test_size=0.1, random_state=seed,
+            stratify=np.asarray([values[0] for values in labels]))
+        train = np.flatnonzero(np.isin(inverse, train_groups))
+        test = np.flatnonzero(np.isin(inverse, test_groups))
+    else:
+        # --conflicts keep can contain multiple labels in the same group.
+        train, test = make_splits(y, groups, 10, seed)[0]
+    if set(y[train]) != {0, 1, 2} or set(y[test]) != {0, 1, 2}:
+        raise ValueError("Each holdout partition must contain all three labels.")
+    if set(groups[train]) & set(groups[test]):
+        raise ValueError("Sequence leakage into independent test.")
+    return train, test

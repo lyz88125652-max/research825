@@ -11,8 +11,10 @@ python main.py
 
 1. `data/training_cv.xlsx` を読み込みます。
 2. 特徴量ファイルがなければ `ESM-2.py` で650Mモデルの特徴量を抽出します。
-3. 同じ5分割でCNN・Random Forest・LightGBMを学習、評価します。
-4. `results/run_日時/` にモデルごとの結果と比較表を保存します。
+3. ラベル重複・使用できない表記を除いたデータから、ラベル比率を保って約10%を独立testとして確保します。
+4. 残り約90%を使い、共通の5分割でCNN・Random Forest・LightGBMを学習、評価します。
+5. 各モデルを約90%の全体で再学習し、独立testを評価します。
+6. `results/run_日時/` に既存形式の結果、`summary.xlsx`、CNNのloss図を保存します。
 
 初回はHugging FaceからESM-2モデルをダウンロードします。既存の特徴量は、配列・ラベル・元の行番号を入力Excelと照合して再利用します。入力を変更した場合は `python main.py --reextract` で再抽出します。
 
@@ -74,7 +76,11 @@ python main.py --conflicts drop
 | 各モデルの `fold_*/model.*` | foldごとの学習済みモデル |
 | CNNの `fold_*/history.csv` | 内部検証と再学習の学習履歴 |
 
-評価指標はAccuracy、Balanced Accuracy、Macro Precision/Recall/F1、Weighted F1、MCC、Log Loss、Macro ROC-AUC（one-vs-rest）です。標準偏差はfold間の標本標準偏差であり、信頼区間ではありません。最終モデルの選定やハイパーパラメータ探索は行いません。保存モデルはfoldごとのモデルで、全データでの最終学習モデルは別途作成する必要があります。
+評価指標はAccuracy、Balanced Accuracy、Macro Precision/Recall/F1、Weighted F1、MCC、Log Loss、Macro ROC-AUC（one-vs-rest）です。標準偏差はfold間の標本標準偏差であり、信頼区間ではありません。モデルの選定やハイパーパラメータ探索は行いません。foldごとのモデルに加え、約90%のtraining全体で学習したモデルを各モデルの `final_model/` に保存します。
+
+独立testは特徴量抽出・学習の前に、使用可能な入力配列から乱数seedで確保します。同一配列を一つのグループとし、元のクラス比率を保つ層化ランダム分割を使います。グループ単位のため行数は厳密な90%/10%とならない場合があります。`--conflicts keep` でグループ内に複数ラベルがある場合は層化グループ10分割の先頭をtestに使います。独立testはCV・標準化の学習・CNNのepoch選択には使いません。
+
+`holdout_assignments.csv` に全使用可能行のtraining/test割当、`fold_assignments.csv` にtraining側だけのCV割当を保存します。`run_config.json` にtraining/test件数、クラス別件数、実際のtest比率を記録します。各モデルの `test_predictions.csv`、`test_metrics.json`、`test_confusion_matrix.csv`、`test_classification_report.json` が独立testの結果です。
 
 ## 実行例
 
@@ -101,6 +107,33 @@ python main.py --prepare-only
 macOSでLightGBMの `libomp` 読み込みエラーが出た場合は `brew install libomp` を実行してください。
 
 現在のデータでは複数ラベルの747配列（1,496行）を除外します。さらにESM-2で扱わない39行を除くと、学習・評価対象は7,224件（抗酸化998件、抗菌2,559件、毒性3,667件）になります。入力を更新した場合は、件数を毎回計算し直します。確認用として、現在の入力に基づく一覧を `data/duplicated.xlsx` に作成しています。通常実行時には、その回の一覧を結果フォルダにも出力します。
+
+## Excel集計とCNNのloss図
+
+通常の `python main.py` の学習終了後、`ml_pipeline/reporting.py` が自動で以下を追加します。
+
+- `results/run_日時/summary.xlsx`：モデル別のCV平均・標本標準偏差、training側OOF指標、独立test指標、fold別・クラス別の成績。
+- `cnn/loss_curves.png`：各foldの内部学習・検証lossを並べた一覧。
+- `cnn/fold_*/loss_curve.png`：内部学習・検証と、外側学習データ全体での再学習を分けた図。
+- `cnn/final_model/loss_curve.png`：最終モデルの内部学習・検証と、training全体での再学習の図。
+
+Excelの指標はROC-AUC、Accuracy、Sensitivity、Specificity、MCC、Precision、F1、Log Lossです。
+Sensitivity・Specificityは各クラス対残り（one-vs-rest）で求め、全体表にはマクロ平均を表示します。
+MCCは全体表では多クラス、クラス別表では二値です。定義は `Notes` シートに記載します。
+
+`OOF_pooled` はtraining側の各評価foldの予測を結合した成績です。`Independent_test` が最初に確保した約10%の独立testの成績です。既存のCVのみの実験にレポートを追加しても独立testの成績は作れないため、独立testが必要な場合は `python main.py` で再学習してください。
+
+既存結果にも再学習なしで追加できます。
+
+```bash
+python -m ml_pipeline.reporting results/run_20261112_154234_404164
+```
+
+CNNの横軸はEpoch、縦軸はLoss、破線は採用epochです。
+今後の学習はepoch終了時の重みなし学習CEをevalモードで記録し、同条件の検証CEと比較します。
+既存履歴の学習lossはクラス重み付きで、重みなしの検証lossとは条件が異なるため図に注記します。
+再学習のlossは別パネルに表示します。学習lossの低下に対して検証lossが上昇し続けるかを確認できます。
+`--prepare-only` はデータ監査のみのため、Excel集計と図の生成は行いません。
 
 ## 動作確認
 
