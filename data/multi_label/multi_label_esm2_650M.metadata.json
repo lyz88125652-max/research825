@@ -4,8 +4,8 @@
   "features": 1280,
   "pooling": "mean over residue tokens; exclude BOS, EOS and padding",
   "task": "multilabel",
-  "input": "/Users/liuyizhen/myproject/research825/data/multi-label.csv",
-  "output": "/Users/liuyizhen/myproject/research825/data/multi_label/multi_label_esm2_650M.npz",
+  "input": "/home/user/kurata2026/research825ryu/data/multi-label.csv",
+  "output": "/home/user/kurata2026/research825ryu/data/multi_label/multi_label_esm2_650M.npz",
   "accepted": 7963,
   "skipped": 39,
   "label_counts": {
@@ -27,10 +27,10 @@
     7963,
     3
   ],
-  "reused_records": 7963,
-  "reuse_features": "/Users/liuyizhen/myproject/research825/data/multi_class/training_cv_esm2_650M.npz",
+  "reused_records": 0,
+  "reuse_features": null,
   "zero_label_meaning": "not recorded / negative or unknown",
   "invalid_policy": "skip",
-  "device": "reused_cache",
+  "device": "cpu",
   "sequence_conversion": "none; lowercase and modification notation unsupported"
 }

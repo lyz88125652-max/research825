@@ -1,0 +1,67 @@
+{
+  "input": "/home/user/kurata2026/research825ryu/data/training_cv.xlsx",
+  "features": "/home/user/kurata2026/research825ryu/data/training_cv_esm2_650M.npz",
+  "output_dir": "/home/user/kurata2026/research825ryu/results",
+  "models": [
+    "cnn",
+    "rf",
+    "lightgbm"
+  ],
+  "folds": 5,
+  "seed": 42,
+  "conflicts": "drop",
+  "device": "auto",
+  "esm_batch_size": 8,
+  "reextract": false,
+  "prepare_only": false,
+  "trees": 300,
+  "jobs": -1,
+  "cnn_epochs": 30,
+  "cnn_batch_size": 64,
+  "learning_rate": 0.001,
+  "patience": 5,
+  "audit": {
+    "input_records": 8759,
+    "unique_sequences": 8002,
+    "conflicting_sequences": 747,
+    "conflicting_rows": 1496,
+    "conflict_policy": "drop",
+    "excluded_conflicting_rows": 1496,
+    "unsupported_sequence_rows": 39,
+    "eligible_training_rows": 7224
+  },
+  "training_rows": 6498,
+  "feature_dimensions": 1280,
+  "test_rows": 726,
+  "holdout_fraction_requested": 0.1,
+  "holdout_fraction_actual": 0.1004983388704319,
+  "training_label_counts": {
+    "1": 895,
+    "2": 2303,
+    "3": 3300
+  },
+  "test_label_counts": {
+    "1": 103,
+    "2": 256,
+    "3": 367
+  },
+  "holdout_method": "random stratified exact-sequence groups; original class proportions",
+  "feature_sha256": "5a7ea9b66a6e36b1501b53519e61d4e997810d778d71eb920cff82c4cbb68d2b",
+  "versions": {
+    "numpy": "1.24.3",
+    "scikit-learn": "1.2.2",
+    "torch": "1.12.1+cu113",
+    "lightgbm": "4.6.0",
+    "transformers": "4.46.0",
+    "openpyxl": "3.1.5",
+    "matplotlib": "3.5.1"
+  },
+  "task": "multiclass; labels describe source annotations",
+  "split": "StratifiedGroupKFold grouped by exact sequence",
+  "labels": {
+    "1": "antioxidant",
+    "2": "antimicrobial",
+    "3": "toxic"
+  },
+  "cnn_input": "pooled ESM embedding coordinates, not residue positions"
+}
