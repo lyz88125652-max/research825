@@ -1,0 +1,95 @@
+{
+  "input": "/home/user/kurata2026/research825ryu/data/multi-label.csv",
+  "features": "/home/user/kurata2026/research825ryu/data/multi_label/multi_label_esm2_650M.npz",
+  "output_dir": "/home/user/kurata2026/research825ryu/results_multi_label",
+  "models": [
+    "cnn",
+    "rf",
+    "lightgbm",
+    "lr",
+    "mlp",
+    "chain",
+    "catboost",
+    "xgboost",
+    "svm"
+  ],
+  "folds": 5,
+  "test_fraction": 0.1,
+  "threshold": 0.5,
+  "seed": 42,
+  "device": "auto",
+  "esm_batch_size": 8,
+  "reextract": false,
+  "reuse_features": null,
+  "no_feature_reuse": false,
+  "prepare_only": false,
+  "trees": 300,
+  "jobs": -1,
+  "cnn_epochs": 30,
+  "cnn_batch_size": 64,
+  "learning_rate": 0.001,
+  "patience": 5,
+  "mlp_epochs": 30,
+  "mlp_batch_size": 64,
+  "linear_c": 1.0,
+  "svm_c": 1.0,
+  "chain_folds": 3,
+  "chain_order": [
+    0,
+    1,
+    2
+  ],
+  "task": "multilabel",
+  "label_names": [
+    "antioxidant",
+    "antimicrobial",
+    "toxic"
+  ],
+  "label_policy": "negative or unknown / not recorded; treated as 0 in this baseline",
+  "input_sha256": "323858831daccd410ec6a5e33438cff78885335534f4ee1ad9be28b7ce187162",
+  "features_sha256": "bae6dc880fb6135a9aa4fa800915c87e0b432d2dfb591069354645cfcbaa0eb0",
+  "versions": {
+    "numpy": "1.24.3",
+    "scikit-learn": "1.2.2",
+    "iterative-stratification": "0.1.9",
+    "torch": "1.12.1+cu113",
+    "lightgbm": "4.6.0",
+    "catboost": "1.2.10",
+    "xgboost": "3.0.5",
+    "transformers": "4.46.0",
+    "openpyxl": "3.1.5",
+    "matplotlib": "3.5.1"
+  },
+  "accepted_records": 7963,
+  "training_rows": 7176,
+  "test_rows": 787,
+  "test_fraction_actual": 0.09883209845535602,
+  "audit": {
+    "input_records": 8002,
+    "accepted_records": 7963,
+    "unsupported_records": 39,
+    "retained_multi_activity_records": 747,
+    "label_names": [
+      "antioxidant",
+      "antimicrobial",
+      "toxic"
+    ],
+    "positive_counts": {
+      "antioxidant": 995,
+      "antimicrobial": 3306,
+      "toxic": 4411
+    },
+    "combinations": {
+      "1,0,0": 990,
+      "1,1,0": 3,
+      "1,1,1": 2,
+      "0,1,1": 742,
+      "0,1,0": 2559,
+      "0,0,1": 3667
+    },
+    "zero_meaning": "negative or unknown / not recorded; treated as 0 in this baseline"
+  },
+  "split_method": "iterative multilabel stratification; unique sequences",
+  "decision_rule": "per-label probabilities >= threshold; no normalization",
+  "cnn_axis": "ESM mean-embedding coordinates, not residue positions"
+}

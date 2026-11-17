@@ -1,0 +1,25 @@
+{
+  "input_records": 8002,
+  "accepted_records": 7963,
+  "unsupported_records": 39,
+  "retained_multi_activity_records": 747,
+  "label_names": [
+    "antioxidant",
+    "antimicrobial",
+    "toxic"
+  ],
+  "positive_counts": {
+    "antioxidant": 995,
+    "antimicrobial": 3306,
+    "toxic": 4411
+  },
+  "combinations": {
+    "1,0,0": 990,
+    "1,1,0": 3,
+    "1,1,1": 2,
+    "0,1,1": 742,
+    "0,1,0": 2559,
+    "0,0,1": 3667
+  },
+  "zero_meaning": "negative or unknown / not recorded; treated as 0 in this baseline"
+}
