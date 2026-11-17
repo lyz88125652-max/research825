@@ -1,42 +1,46 @@
 # Multi-class ESM-2 ペプチド分類
 
+2026年11月17日、multi-class専用ファイルをこのフォルダへ集約しました。以下の実行コマンドはプロジェクト直下から実行します。共通のESM-2.pyと元データはプロジェクト直下に残しています。旧特徴量キャッシュdata/multi_class/はmulti-labelからも再利用されるため、現在位置を維持しています。
+
+
 Python 3.10以上で、プロジェクト直下から実行します。
 
 ```bash
-python -m pip install -r requirements_multi_class.txt
-python main_multi_class.py
+python -m pip install -r multi_class/requirements_multi_class.txt
+python multi_class/main_multi_class.py
 ```
 
 `main_multi_class.py` が次の処理を呼び出します。
 
-1. `data/multi_class/training_cv.xlsx` を読み込みます。
+1. `multi_class/data/training_cv.xlsx` を読み込みます。
 2. 特徴量ファイルがなければ `ESM-2.py` で650Mモデルの特徴量を抽出します。
 3. ラベル重複・使用できない表記を除いたデータから、ラベル比率を保って約10%を独立testとして確保します。
 4. 残り約90%を使い、共通の5分割でCNN・Random Forest・LightGBMを学習、評価します。
 5. 各モデルを約90%の全体で再学習し、独立testを評価します。
-6. `results_multi_class/run_日時/` に既存形式の結果、`summary.xlsx`、CNNのloss図を保存します。
+6. `multi_class/results_multi_class/run_日時/` に既存形式の結果、`summary.xlsx`、CNNのloss図を保存します。
 
-初回はHugging FaceからESM-2モデルをダウンロードします。既存の特徴量は、配列・ラベル・元の行番号を入力Excelと照合して再利用します。入力を変更した場合は `python main_multi_class.py --reextract` で再抽出します。
+初回はHugging FaceからESM-2モデルをダウンロードします。既存の特徴量は、配列・ラベル・元の行番号を入力Excelと照合して再利用します。入力を変更した場合は `python multi_class/main_multi_class.py --reextract` で再抽出します。
 
 ## ファイル構成
 
-旧名称と新名称の対応は、プロジェクト直下の `MULTI_CLASS_PATHS.md` を参照してください。
+移動先の対応は、このフォルダの [MULTI_CLASS_PATHS.md](MULTI_CLASS_PATHS.md) を参照してください。以下の構成表のパスはプロジェクト直下からの相対パスです。
 
 ```text
-main_multi_class.py              実行の入口、設定、処理の呼び出し
-ESM-2.py             ESM-2 650Mの特徴量抽出
-multi_class_pipeline/
+multi_class/main_multi_class.py  実行の入口、設定、処理の呼び出し
+ESM-2.py                        共通のESM-2 650M特徴量抽出
+multi_class/multi_class_pipeline/
     data.py                     データ確認、ラベル重複確認、CV分割
     cnn.py                      PyTorchの1D CNN
     random_forest.py            Random Forest
     lightgbm_model.py           LightGBM
     evaluation.py               共通の指標計算、予測・結果保存
     reporting.py                Excel集計、CNNの学習曲線
-requirements_multi_class.txt    必要なライブラリ
-tests_multi_class/              動作確認用のテスト
-results_multi_class/            実験結果とモデル
-experiment_logs_multi_class/    Wordログと図
-data/multi_class/               学習用データと特徴量
+multi_class/requirements_multi_class.txt  必要なライブラリ
+multi_class/tests_multi_class/   動作確認用のテスト
+multi_class/results_multi_class/            実験結果とモデル
+multi_class/experiment_logs_multi_class/    Wordログと図
+multi_class/data/               multi-class専用の学習入力と除外一覧
+data/multi_class/               共通利用する旧ESM-2特徴量キャッシュ
 ```
 
 ## 入力と学習方法
@@ -58,14 +62,14 @@ ESM-2の最終層の残基表現を平均し、配列あたり1,280次元を使�
 複数ラベルの配列をすべて除外する場合は、次を実行します。
 
 ```bash
-python main_multi_class.py --conflicts drop
+python multi_class/main_multi_class.py --conflicts drop
 ```
 
 これは既定の設定です。元ファイルを変更せず、学習対象を絞ります。除外後の分類は、今回のデータでラベルが重複していない配列を対象とした評価です。他の活性が生物学的に存在しないことを保証するものではありません。比較のため元ラベルを保持したまま実行する場合は `--conflicts keep` を指定できます。複数活性を同時に予測するマルチラベル分類は、この3クラス分類とは別の学習課題になります。
 
 ## 出力
 
-`results_multi_class/run_日時/` 以下に保存します。
+`multi_class/results_multi_class/run_日時/` 以下に保存します。
 
 | ファイル | 内容 |
 |---|---|
@@ -93,33 +97,33 @@ python main_multi_class.py --conflicts drop
 
 ```bash
 # Random Forestだけ
-python main_multi_class.py --models rf
+python multi_class/main_multi_class.py --models rf
 
 # Random ForestとLightGBM
-python main_multi_class.py --models rf lightgbm
+python multi_class/main_multi_class.py --models rf lightgbm
 
 # CPUでCNN。小さいバッチで実行
-python main_multi_class.py --models cnn --device cpu --cnn-batch-size 32
+python multi_class/main_multi_class.py --models cnn --device cpu --cnn-batch-size 32
 
 # 評価fold数と木の本数の変更
-python main_multi_class.py --folds 3 --trees 100
+python multi_class/main_multi_class.py --folds 3 --trees 100
 
 # ESM抽出時にGPUメモリが不足する場合
-python main_multi_class.py --esm-batch-size 1
+python multi_class/main_multi_class.py --esm-batch-size 1
 
 # 重複一覧と対象件数だけを確認（モデルは読み込まない）
-python main_multi_class.py --prepare-only
+python multi_class/main_multi_class.py --prepare-only
 ```
 
 macOSでLightGBMの `libomp` 読み込みエラーが出た場合は `brew install libomp` を実行してください。
 
-現在のデータでは複数ラベルの747配列（1,496行）を除外します。さらにESM-2で扱わない39行を除くと、学習・評価対象は7,224件（抗酸化998件、抗菌2,559件、毒性3,667件）になります。入力を更新した場合は、件数を毎回計算し直します。確認用として、現在の入力に基づく一覧を `data/multi_class/duplicated.xlsx` に作成しています。通常実行時には、その回の一覧を結果フォルダにも出力します。
+現在のデータでは複数ラベルの747配列（1,496行）を除外します。さらにESM-2で扱わない39行を除くと、学習・評価対象は7,224件（抗酸化998件、抗菌2,559件、毒性3,667件）になります。入力を更新した場合は、件数を毎回計算し直します。確認用として、現在の入力に基づく一覧を `multi_class/data/duplicated.xlsx` に作成しています。通常実行時には、その回の一覧を結果フォルダにも出力します。
 
 ## Excel集計とCNNのloss図
 
-通常の `python main_multi_class.py` の学習終了後、`multi_class_pipeline/reporting.py` が自動で以下を追加します。
+通常の `python multi_class/main_multi_class.py` の学習終了後、`multi_class_pipeline/reporting.py` が自動で以下を追加します。
 
-- `results_multi_class/run_日時/summary.xlsx`：モデル別のCV平均・標本標準偏差、training側OOF指標、独立test指標、fold別・クラス別の成績。
+- `multi_class/results_multi_class/run_日時/summary.xlsx`：モデル別のCV平均・標本標準偏差、training側OOF指標、独立test指標、fold別・クラス別の成績。
 - `cnn/loss_curves.png`：各foldの内部学習・検証lossを並べた一覧。
 - `cnn/fold_*/loss_curve.png`：内部学習・検証と、外側学習データ全体での再学習を分けた図。
 - `cnn/final_model/loss_curve.png`：最終モデルの内部学習・検証と、training全体での再学習の図。
@@ -128,12 +132,12 @@ Excelの指標はROC-AUC、Accuracy、Sensitivity、Specificity、MCC、Precisio
 Sensitivity・Specificityは各クラス対残り（one-vs-rest）で求め、全体表にはマクロ平均を表示します。
 MCCは全体表では多クラス、クラス別表では二値です。定義は `Notes` シートに記載します。
 
-`OOF_pooled` はtraining側の各評価foldの予測を結合した成績です。`Independent_test` が最初に確保した約10%の独立testの成績です。既存のCVのみの実験にレポートを追加しても独立testの成績は作れないため、独立testが必要な場合は `python main_multi_class.py` で再学習してください。
+`OOF_pooled` はtraining側の各評価foldの予測を結合した成績です。`Independent_test` が最初に確保した約10%の独立testの成績です。既存のCVのみの実験にレポートを追加しても独立testの成績は作れないため、独立testが必要な場合は `python multi_class/main_multi_class.py` で再学習してください。
 
 既存結果にも再学習なしで追加できます。
 
 ```bash
-python -m multi_class_pipeline.reporting results_multi_class/run_20261112_154234_404164
+PYTHONPATH=multi_class python -m multi_class_pipeline.reporting multi_class/results_multi_class/run_20261112_154234_404164
 ```
 
 CNNの横軸はEpoch、縦軸はLoss、破線は採用epochです。
@@ -145,7 +149,7 @@ CNNの横軸はEpoch、縦軸はLoss、破線は採用epochです。
 ## 動作確認
 
 ```bash
-python -m unittest discover -s tests_multi_class -v
+python -m unittest discover -s multi_class/tests_multi_class -v
 ```
 
 合成特徴量を用いた3モデルの学習・予測・保存モデルの再読み込み、配列グループの分離、複数ラベルの除外とExcel出力、キャッシュの整合性検査をテストします。合成データの評価値は実データの性能ではありません。

@@ -1,6 +1,6 @@
 # research825 ペプチド活性予測
 
-既存の3クラス分類を、今後のmulti-label分類と区別できる名称に整理しています。
+抗酸化・抗菌・毒性のmulti-label予測を開発しています。旧multi-class実験はmulti_classフォルダに保管しています。
 
 ## Multi-label 実験
 
@@ -26,33 +26,18 @@ CNN・RF・LightGBMに加え、LR・MLP・Classifier Chain・CatBoost・XGBoost�
 
 `ESM-2.py` は両方式で共用します。既定入力はmulti-label CSVで、従来のmulti-class Excelもヘッダーから自動判定します。
 
-## Multi-class 実験
+## Multi-class 実験の保管
 
-1配列に対して抗酸化・抗菌・毒性のうち1つを予測します。3クラスの出力確率の合計は1です。
-
-```bash
-python -m pip install -r requirements_multi_class.txt
-python main_multi_class.py
-```
-
-| 内容 | 保存先 |
-|---|---|
-| 実行の入口 | `main_multi_class.py` |
-| ESM-2特徴量抽出 | `ESM-2.py` |
-| 学習・評価のコード | `multi_class_pipeline/` |
-| 学習用データと特徴量 | `data/multi_class/` |
-| 実験結果と学習済みモデル | `results_multi_class/` |
-| テスト | `tests_multi_class/` |
-| Word実験ログと図 | `experiment_logs_multi_class/` |
-| 詳しい使い方 | [README_multi_class.md](README_multi_class.md) |
-
-テストは次のコマンドで実行します。
+旧multi-class専用のコード・結果・モデル・テスト・Wordログ・学習用Excelは [multi_class/](multi_class/README.md) に集約しました。
 
 ```bash
-python -m unittest discover -s tests_multi_class -v
+python multi_class/main_multi_class.py
+python -m unittest discover -s multi_class/tests_multi_class -v
 ```
 
-旧名称からの変更一覧と過去の記録内のパスについては、[MULTI_CLASS_PATHS.md](MULTI_CLASS_PATHS.md) を参照してください。
+元の活性別CSV・FASTA、共通の `ESM-2.py`、multi-label側でも再利用する旧特徴量キャッシュ `data/multi_class/training_cv_esm2_650M.*` は現在の場所に残しています。
+
+移動先の対応は [MULTI_CLASS_PATHS.md](multi_class/MULTI_CLASS_PATHS.md) を参照してください。過去のWordログ・モデル・メタデータに記録された実験当時のパスは、そのまま保持しています。
 
 ## 今後のmulti-label用に共有するデータ
 

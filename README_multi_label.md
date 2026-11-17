@@ -47,7 +47,7 @@ python ESM-2.py
 python ESM-2.py --reuse-features data/multi_class/training_cv_esm2_650M.npz
 
 # 従来のmulti-class入力も利用可能
-python ESM-2.py --input data/multi_class/training_cv.xlsx
+python ESM-2.py --input multi_class/data/training_cv.xlsx
 ```
 
 multi-label出力の既定保存先は `data/multi_label/multi_label_esm2_650M.npz` です。ラベルは常に現在の入力から作り直し、古いキャッシュの単一ラベルを流用しません。モデルID、層、平均方法が一致するキャッシュだけを再利用し、不足する配列だけを追加抽出します。

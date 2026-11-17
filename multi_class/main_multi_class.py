@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Run multi-class ESM-2 extraction and CNN / Random Forest / LightGBM CV.
 
-    python main_multi_class.py
-    python main_multi_class.py --models rf lightgbm
-    python main_multi_class.py --models cnn --device cpu --cnn-epochs 10
-    python main_multi_class.py --conflicts drop
+    python multi_class/main_multi_class.py
+    python multi_class/main_multi_class.py --models rf lightgbm
+    python multi_class/main_multi_class.py --models cnn --device cpu --cnn-epochs 10
+    python multi_class/main_multi_class.py --conflicts drop
 """
 
 import argparse
@@ -17,15 +17,16 @@ import subprocess
 import sys
 
 
-ROOT = Path(__file__).resolve().parent
+ARCHIVE_ROOT = Path(__file__).resolve().parent
+ROOT = ARCHIVE_ROOT.parent
 
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--input", type=Path, default=ROOT / "data/multi_class/training_cv.xlsx")
+    parser.add_argument("--input", type=Path, default=ARCHIVE_ROOT / "data/training_cv.xlsx")
     parser.add_argument("--features", type=Path, default=ROOT / "data/multi_class/training_cv_esm2_650M.npz")
-    parser.add_argument("--output-dir", type=Path, default=ROOT / "results_multi_class")
+    parser.add_argument("--output-dir", type=Path, default=ARCHIVE_ROOT / "results_multi_class")
     parser.add_argument("--models", nargs="+", choices=["cnn", "rf", "lightgbm"],
                         default=["cnn", "rf", "lightgbm"])
     parser.add_argument("--folds", type=int, default=5)
@@ -77,7 +78,7 @@ def check_dependencies(args):
     if failures:
         raise RuntimeError("Dependencies unavailable:\n" + "\n".join(failures)
                            + f"\nInstall: {sys.executable} -m pip install -r "
-                           + str(ROOT / "requirements_multi_class.txt")
+                           + str(ARCHIVE_ROOT / "requirements_multi_class.txt")
                            + "\nOn macOS, a LightGBM libomp error can be resolved with: brew install libomp")
 
 

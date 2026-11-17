@@ -1,4 +1,4 @@
-"""Run with: python -m unittest discover -s tests_multi_class -v.
+"""Run with: python -m unittest discover -s multi_class/tests_multi_class -v.
 
 All learning tests use synthetic features, never scientific benchmark scores.
 """
@@ -16,10 +16,9 @@ import unittest
 import numpy as np
 from openpyxl import Workbook, load_workbook
 
-from multi_class_pipeline.data import audit_labels, load_features, make_splits, make_holdout, load_extractor
-
-
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from multi_class_pipeline.data import audit_labels, load_features, make_splits, make_holdout, load_extractor
 
 
 class PipelineTests(unittest.TestCase):
@@ -27,10 +26,11 @@ class PipelineTests(unittest.TestCase):
         from main_multi_class import parse_args
 
         args = parse_args([])
-        self.assertEqual(args.input.parent, ROOT / "data/multi_class")
+        self.assertEqual(args.input.parent, ROOT / "data")
         self.assertTrue(args.input.is_file())
         self.assertEqual(args.output_dir, ROOT / "results_multi_class")
-        extractor = load_extractor(ROOT)
+        self.assertEqual(args.features.parent, ROOT.parent / "data/multi_class")
+        extractor = load_extractor(ROOT.parent)
         self.assertEqual(extractor.MODEL_ID, "facebook/esm2_t33_650M_UR50D")
         self.assertIsNone(extractor.sequence_error("ACDEFG"))
 
