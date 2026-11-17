@@ -1,6 +1,6 @@
 """Export an Excel summary and CNN loss plots from saved run artifacts.
 
-Usage: python -m ml_pipeline.reporting results/run_YYYYMMDD_HHMMSS_microseconds
+Usage: python -m multi_class_pipeline.reporting results_multi_class/run_YYYYMMDD_HHMMSS_microseconds
 No training or model loading is required.
 """
 

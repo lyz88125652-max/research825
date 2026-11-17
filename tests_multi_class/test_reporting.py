@@ -5,8 +5,8 @@ from pathlib import Path
 import numpy as np
 from openpyxl import load_workbook
 
-from ml_pipeline.evaluation import write_csv
-from ml_pipeline.reporting import generate_reports, score_predictions
+from multi_class_pipeline.evaluation import write_csv
+from multi_class_pipeline.reporting import generate_reports, score_predictions
 
 
 class ReportingTests(unittest.TestCase):

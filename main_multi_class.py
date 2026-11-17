@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Run ESM-2 extraction (if needed) and CNN / Random Forest / LightGBM CV.
+"""Run multi-class ESM-2 extraction and CNN / Random Forest / LightGBM CV.
 
-    python main.py
-    python main.py --models rf lightgbm
-    python main.py --models cnn --device cpu --cnn-epochs 10
-    python main.py --conflicts drop
+    python main_multi_class.py
+    python main_multi_class.py --models rf lightgbm
+    python main_multi_class.py --models cnn --device cpu --cnn-epochs 10
+    python main_multi_class.py --conflicts drop
 """
 
 import argparse
@@ -23,9 +23,9 @@ ROOT = Path(__file__).resolve().parent
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--input", type=Path, default=ROOT / "data/training_cv.xlsx")
-    parser.add_argument("--features", type=Path, default=ROOT / "data/training_cv_esm2_650M.npz")
-    parser.add_argument("--output-dir", type=Path, default=ROOT / "results")
+    parser.add_argument("--input", type=Path, default=ROOT / "data/multi_class/training_cv.xlsx")
+    parser.add_argument("--features", type=Path, default=ROOT / "data/multi_class/training_cv_esm2_650M.npz")
+    parser.add_argument("--output-dir", type=Path, default=ROOT / "results_multi_class")
     parser.add_argument("--models", nargs="+", choices=["cnn", "rf", "lightgbm"],
                         default=["cnn", "rf", "lightgbm"])
     parser.add_argument("--folds", type=int, default=5)
@@ -77,7 +77,7 @@ def check_dependencies(args):
     if failures:
         raise RuntimeError("Dependencies unavailable:\n" + "\n".join(failures)
                            + f"\nInstall: {sys.executable} -m pip install -r "
-                           + str(ROOT / "requirements.txt")
+                           + str(ROOT / "requirements_multi_class.txt")
                            + "\nOn macOS, a LightGBM libomp error can be resolved with: brew install libomp")
 
 
@@ -85,8 +85,8 @@ def main(argv=None):
     args = parse_args(argv)
     try:
         check_dependencies(args)
-        from ml_pipeline.data import load_extractor, load_features, audit_labels, make_splits, make_holdout
-        from ml_pipeline.evaluation import evaluate_model, evaluate_holdout, write_csv, write_json
+        from multi_class_pipeline.data import load_extractor, load_features, audit_labels, make_splits, make_holdout
+        from multi_class_pipeline.evaluation import evaluate_model, evaluate_holdout, write_csv, write_json
         import numpy as np
 
         output = args.output_dir / datetime.now().strftime("run_%Y%m%d_%H%M%S_%f")
@@ -161,8 +161,8 @@ def main(argv=None):
         write_json(output / "run_config.json", config)
         print(f"Training rows: {len(y)}; features: {X.shape[1]}; results: {output}", flush=True)
         print(f"Independent test rows: {len(y_test)} (excluded from CV)", flush=True)
-        registry = {"cnn": "ml_pipeline.cnn", "rf": "ml_pipeline.random_forest",
-                    "lightgbm": "ml_pipeline.lightgbm_model"}
+        registry = {"cnn": "multi_class_pipeline.cnn", "rf": "multi_class_pipeline.random_forest",
+                    "lightgbm": "multi_class_pipeline.lightgbm_model"}
         summaries = []
         for name in args.models:
             trainer = importlib.import_module(registry[name]).train_predict
@@ -174,7 +174,7 @@ def main(argv=None):
             trainer = importlib.import_module(registry[name]).train_predict
             evaluate_holdout(name, trainer, X, y, sequences, X_test, y_test,
                              test_sequences, heldout_rows, output, args)
-        from ml_pipeline.reporting import generate_reports
+        from multi_class_pipeline.reporting import generate_reports
         generate_reports(output, args.models)
         print("\nCV results (mean ± sample standard deviation):", flush=True)
         for result in summaries:

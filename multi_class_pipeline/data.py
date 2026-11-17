@@ -41,7 +41,7 @@ def load_features(path, input_path=None, extractor=None):
         actual = list(zip(rows.tolist(), sequences.tolist(), y.astype(int).tolist()))
         if actual != expected:
             raise ValueError("Cached features do not match the input XLSX. "
-                             "Run main.py --reextract to rebuild them.")
+                             "Run main_multi_class.py --reextract to rebuild them.")
     return X.astype(np.float32), y.astype(np.int64) - 1, sequences, rows
 
 

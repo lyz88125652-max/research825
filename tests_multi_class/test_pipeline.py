@@ -1,4 +1,4 @@
-"""Run with: python -m unittest discover -s tests -v.
+"""Run with: python -m unittest discover -s tests_multi_class -v.
 
 All learning tests use synthetic features, never scientific benchmark scores.
 """
@@ -16,13 +16,24 @@ import unittest
 import numpy as np
 from openpyxl import Workbook, load_workbook
 
-from ml_pipeline.data import audit_labels, load_features, make_splits, make_holdout
+from multi_class_pipeline.data import audit_labels, load_features, make_splits, make_holdout, load_extractor
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class PipelineTests(unittest.TestCase):
+    def test_multi_class_entry_points_resolve(self):
+        from main_multi_class import parse_args
+
+        args = parse_args([])
+        self.assertEqual(args.input.parent, ROOT / "data/multi_class")
+        self.assertTrue(args.input.is_file())
+        self.assertEqual(args.output_dir, ROOT / "results_multi_class")
+        extractor = load_extractor(ROOT)
+        self.assertEqual(extractor.MODEL_ID, "facebook/esm2_t33_650M_UR50D")
+        self.assertIsNone(extractor.sequence_error("ACDEFG"))
+
     def test_stratified_independent_holdout(self):
         y = np.repeat(np.arange(3), 80)
         groups = np.asarray([f"c{c}_s{i // 2}" for c in range(3) for i in range(80)])
@@ -113,14 +124,14 @@ class PipelineTests(unittest.TestCase):
             env = dict(os.environ, OMP_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1",
                        MKL_NUM_THREADS="1")
             run = subprocess.run(
-                [sys.executable, str(ROOT / "main.py"), "--input", str(input_path),
-                 "--features", str(features), "--output-dir", str(directory / "results"),
+                [sys.executable, str(ROOT / "main_multi_class.py"), "--input", str(input_path),
+                 "--features", str(features), "--output-dir", str(directory / "results_multi_class"),
                  "--folds", "3", "--trees", "3", "--jobs", "1", "--cnn-epochs", "1",
                  "--cnn-batch-size", "16", "--device", "cpu"],
                 cwd=ROOT, env=env, text=True, capture_output=True, timeout=240,
             )
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
-            output = next((directory / "results").glob("run_*"))
+            output = next((directory / "results_multi_class").glob("run_*"))
             self.assertTrue((output / "summary.xlsx").exists())
             self.assertTrue((output / "cnn/loss_curves.png").exists())
             config = json.loads((output / "run_config.json").read_text())
@@ -172,7 +183,7 @@ class PipelineTests(unittest.TestCase):
                                        for r in fold_predictions])
                 if name == "cnn":
                     import torch
-                    from ml_pipeline.cnn import build_network
+                    from multi_class_pipeline.cnn import build_network
                     # This checkpoint was generated inside this test. Older
                     # installed PyTorch versions do not support weights_only.
                     options = {"weights_only": True} if "weights_only" in inspect.signature(torch.load).parameters else {}

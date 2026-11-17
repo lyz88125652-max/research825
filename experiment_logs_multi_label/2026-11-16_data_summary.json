@@ -1,0 +1,174 @@
+{
+  "date": "2026-11-16",
+  "timezone": "Asia/Tokyo",
+  "sources": [
+    {
+      "file": "antioxidant_peptides.csv",
+      "activity": "antioxidant",
+      "records": 1039,
+      "unique_sequences": 1031,
+      "duplicate_records": 8,
+      "has_header": true,
+      "sha256": "d949f7f9ba6bd22dded9da41dcd9ae0bf0ca1acfd5485c1fd12b265cc7aa7c83"
+    },
+    {
+      "file": "naturalAMPs_APD2024a.csv",
+      "activity": "antimicrobial",
+      "records": 3306,
+      "unique_sequences": 3306,
+      "duplicate_records": 0,
+      "has_header": true,
+      "sha256": "0c0e19c526e3897077817903696489dca2b849d89bf7535cfe4c9c8b58bf85b1"
+    },
+    {
+      "file": "poisonous.csv",
+      "activity": "toxic",
+      "records": 4414,
+      "unique_sequences": 4414,
+      "duplicate_records": 0,
+      "has_header": false,
+      "sha256": "979adada88faa7b87c1a10c08f9d823c7a3d0f0a4c430468b4463591293a625e"
+    }
+  ],
+  "input_sha256": "323858831daccd410ec6a5e33438cff78885335534f4ee1ad9be28b7ce187162",
+  "input_columns": [
+    "sequence",
+    "antioxidant",
+    "antimicrobial",
+    "toxic"
+  ],
+  "label_order": [
+    "antioxidant",
+    "antimicrobial",
+    "toxic"
+  ],
+  "raw": {
+    "count": 8002,
+    "positive_counts": {
+      "antioxidant": 1031,
+      "antimicrobial": 3306,
+      "toxic": 4414
+    },
+    "patterns": {
+      "001": 3670,
+      "010": 2559,
+      "011": 742,
+      "100": 1026,
+      "110": 3,
+      "111": 2
+    },
+    "multi_activity": 747
+  },
+  "supported": {
+    "count": 7963,
+    "positive_counts": {
+      "antioxidant": 995,
+      "antimicrobial": 3306,
+      "toxic": 4411
+    },
+    "patterns": {
+      "001": 3667,
+      "010": 2559,
+      "011": 742,
+      "100": 990,
+      "110": 3,
+      "111": 2
+    },
+    "multi_activity": 747
+  },
+  "unsupported_count": 39,
+  "unsupported_positive_counts": {
+    "antioxidant": 36,
+    "antimicrobial": 0,
+    "toxic": 3
+  },
+  "unsupported_reasons": {
+    "unsupported characters: '~'": 6,
+    "unsupported characters: '()12367:;[]hp{}~'": 15,
+    "unsupported characters: '()12367:;[]hp{}~β'": 2,
+    "unsupported characters: '4[]{}'": 2,
+    "unsupported characters: '5;{}'": 1,
+    "unsupported characters: '02:{}'": 1,
+    "unsupported characters: 'e{}'": 7,
+    "unsupported characters: '{}β'": 1,
+    "unsupported characters: '{}'": 1,
+    "unsupported characters: 'l'": 3
+  },
+  "planned_split": {
+    "seed": 42,
+    "training": 7176,
+    "test": 787,
+    "fraction": 0.09883209845535602,
+    "training_positive_counts": [
+      895,
+      2975,
+      3970
+    ],
+    "test_positive_counts": [
+      100,
+      331,
+      441
+    ],
+    "folds": [
+      {
+        "fold": 1,
+        "training": 5752,
+        "validation": 1424
+      },
+      {
+        "fold": 2,
+        "training": 5746,
+        "validation": 1430
+      },
+      {
+        "fold": 3,
+        "training": 5731,
+        "validation": 1445
+      },
+      {
+        "fold": 4,
+        "training": 5743,
+        "validation": 1433
+      },
+      {
+        "fold": 5,
+        "training": 5732,
+        "validation": 1444
+      }
+    ]
+  },
+  "lengths_supported": {
+    "antioxidant": {
+      "count": 995,
+      "minimum": 2,
+      "median": 5,
+      "mean": 5.942713567839196,
+      "maximum": 31
+    },
+    "antimicrobial": {
+      "count": 3306,
+      "minimum": 2,
+      "median": 29.0,
+      "mean": 34.4038112522686,
+      "maximum": 183
+    },
+    "toxic": {
+      "count": 4411,
+      "minimum": 4,
+      "median": 22,
+      "mean": 22.11017909771027,
+      "maximum": 35
+    }
+  },
+  "execution_status": {
+    "esm_new_forward_run_today": false,
+    "real_classifier_training_today": false,
+    "checks": "static, mocked model calls, untrained MLP forward, input and split validation"
+  },
+  "existing_cache_metadata": {
+    "accepted": 7963,
+    "reused_records": 7963,
+    "reuse_features": "/Users/liuyizhen/myproject/research825/data/multi_class/training_cv_esm2_650M.npz",
+    "device": "reused_cache"
+  }
+}
