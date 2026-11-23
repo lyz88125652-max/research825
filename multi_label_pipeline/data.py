@@ -90,3 +90,51 @@ def make_splits(y, sequences, folds, seed):
     if not np.all(seen == 1):
         raise ValueError("Every row must be evaluated once in CV.")
     return result
+
+
+def frozen_splits(path, records, folds, seed, test_fraction):
+    """Create once or strictly reload an auditable sequence-aligned split manifest."""
+    import hashlib
+    import json
+    identity = [[int(row), str(sequence), list(target)] for row, sequence, target in records]
+    fingerprint = hashlib.sha256(json.dumps(identity, separators=(",", ":")).encode()).hexdigest()
+    y = np.asarray([row[2] for row in records], dtype=np.int64)
+    sequences = np.asarray([row[1] for row in records])
+    expected = {"schema": 1, "dataset_sha256": fingerprint, "label_names": list(LABEL_NAMES),
+                "folds": folds, "seed": seed, "test_fraction": test_fraction}
+    if path.exists():
+        saved = json.loads(path.read_text())
+        if any(saved.get(key) != value for key, value in expected.items()):
+            raise ValueError("Frozen split manifest does not match dataset/settings; use a new split-file.")
+    else:
+        train, test = make_holdout(y, sequences, seed, test_fraction)
+        parts = make_splits(y[train], sequences[train], folds, seed)
+        saved = {**expected, "training_indices": train.tolist(), "test_indices": test.tolist(),
+                 "validation_indices": [validation.tolist() for _, validation in parts],
+                 "records": identity, "method": "iterative multilabel stratification; unique sequences"}
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("x", encoding="utf-8") as handle:
+            json.dump(saved, handle, ensure_ascii=False, indent=2)
+            handle.write("\n")
+    if saved.get("records") != identity:
+        raise ValueError("Frozen split records were changed.")
+    def indices(values, upper):
+        if not isinstance(values, list) or any(type(i) is not int or i < 0 or i >= upper for i in values):
+            raise ValueError("Invalid split indices.")
+        if len(set(values)) != len(values): raise ValueError("Repeated split indices.")
+        return np.asarray(values, dtype=int)
+    train = indices(saved["training_indices"], len(y))
+    test = indices(saved["test_indices"], len(y))
+    if set(train) & set(test) or set(train) | set(test) != set(range(len(y))):
+        raise ValueError("Frozen holdout does not partition the dataset.")
+    if len(saved["validation_indices"]) != folds: raise ValueError("Wrong number of frozen folds.")
+    parts, seen = [], np.zeros(len(train), dtype=int)
+    for values in saved["validation_indices"]:
+        valid = indices(values, len(train))
+        fit = np.setdiff1d(np.arange(len(train)), valid)
+        for subset in [fit, valid]: validate_targets(y[train[subset]])
+        seen[valid] += 1
+        parts.append((fit, valid))
+    if not np.all(seen == 1): raise ValueError("Invalid frozen fold coverage.")
+    for subset in [train, test]: validate_targets(y[subset])
+    return train, test, parts, saved

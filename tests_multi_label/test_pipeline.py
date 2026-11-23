@@ -63,63 +63,52 @@ class PipelineTests(unittest.TestCase):
         y, sequences = dataset()
         rng = np.random.default_rng(42)
         X = rng.normal(size=(len(y), 1280)).astype(np.float32)
-        for c in range(3): X[:, c * 128:(c + 1) * 128] += 2 * y[:, c:c + 1]
+        for c in range(3): X[:, c*128:(c+1)*128] += 2*y[:, c:c+1]
         with tempfile.TemporaryDirectory() as directory:
             directory = Path(directory)
-            source, features = directory / "labels.csv", directory / "features.npz"
+            source, features = directory/"labels.csv", directory/"features.npz"
             with source.open("w", newline="") as handle:
-                writer = csv.writer(handle); writer.writerow(["sequence", *NAMES])
-                writer.writerows((sequence, *label) for sequence, label in zip(sequences, y))
-            np.savez(features, X=X, y=y, sequences=sequences, source_rows=np.arange(2, len(y) + 2),
-                     label_names=np.asarray(NAMES), task=np.asarray("multilabel"))
-            env = dict(os.environ, OMP_NUM_THREADS="1", OPENBLAS_NUM_THREADS="1", MKL_NUM_THREADS="1")
-            run = subprocess.run([sys.executable, str(ROOT / "main_multi_label.py"),
-                                  "--models", "cnn", "rf", "lightgbm",
-                                  "--input", str(source), "--features", str(features),
-                                  "--output-dir", str(directory / "results"), "--folds", "3", "--trees", "3",
-                                  "--jobs", "1", "--cnn-epochs", "1", "--cnn-batch-size", "16", "--device", "cpu"],
-                                 cwd=ROOT, env=env, text=True, capture_output=True, timeout=240)
-            self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
-            output = next((directory / "results").glob("run_*"))
-            config = json.loads((output / "run_config.json").read_text())
-            self.assertEqual(config["training_rows"] + config["test_rows"], len(y))
-            self.assertEqual(config["audit"]["retained_multi_activity_records"], 25)
-            workbook = load_workbook(output / "summary.xlsx", read_only=True)
-            self.assertEqual(workbook.sheetnames, ["Summary", "CV_folds", "Label_metrics", "Notes"])
-            workbook.close()
-            reference = None
-            for name in ["cnn", "rf", "lightgbm"]:
-                folder = output / name
-                with (folder / "test_predictions.csv").open(newline="") as handle:
-                    test = list(csv.DictReader(handle))
-                with (folder / "oof_predictions.csv").open(newline="") as handle:
-                    oof = list(csv.DictReader(handle))
-                test_sequences = {r["sequence"] for r in test}
-                self.assertFalse(test_sequences & {r["sequence"] for r in oof})
-                if reference is None: reference = [r["source_row"] for r in test]
-                self.assertEqual(reference, [r["source_row"] for r in test])
-                indices = [int(r["source_row"]) - 2 for r in test]
-                expected = np.asarray([[float(r["prob_" + c]) for c in NAMES] for r in test])
-                self.assertEqual(expected.shape, (config["test_rows"], 3))
-                self.assertFalse(np.allclose(expected.sum(1), 1))
-                if name == "cnn":
-                    checkpoint = torch.load(folder / "final_model/model.pt", weights_only=True)
-                    model = build_network(); model.load_state_dict(checkpoint["state_dict"]); model.eval()
-                    values = ((X[indices] - checkpoint["scaler_mean"].numpy())
-                              / checkpoint["scaler_scale"].numpy()).astype(np.float32)
-                    with torch.inference_mode():
-                        actual = torch.sigmoid(model(torch.from_numpy(values).unsqueeze(1))).numpy()
+                writer=csv.writer(handle); writer.writerow(["sequence",*NAMES])
+                writer.writerows((seq,*target) for seq,target in zip(sequences,y))
+            np.savez(features,X=X,y=y,sequences=sequences,source_rows=np.arange(2,len(y)+2),
+                     label_names=np.asarray(NAMES),task=np.asarray("multilabel"))
+            features.with_suffix(".metadata.json").write_text(json.dumps({
+                "model":"facebook/esm2_t33_650M_UR50D","layer":33,"features":1280,"reused_records":0,
+                "pooling":"mean over residue tokens; exclude BOS, EOS and padding"}))
+            command=[sys.executable,str(ROOT/"main_multi_label.py"),"--models","cnn","rf","lightgbm",
+                "--input",str(source),"--features",str(features),"--split-file",str(directory/"splits.json"),
+                "--output-dir",str(directory/"results"),"--folds","3","--trees","3","--jobs","1",
+                "--cnn-epochs","1","--cnn-batch-size","16","--device","cpu"]
+            env=dict(os.environ,OMP_NUM_THREADS="1",OPENBLAS_NUM_THREADS="1",MKL_NUM_THREADS="1")
+            completed=subprocess.run(command,cwd=ROOT,env=env,text=True,capture_output=True,timeout=240)
+            self.assertEqual(completed.returncode,0,completed.stdout+completed.stderr)
+            output=next((directory/"results").glob("run_*"))
+            self.assertFalse((output/"final_access.json").exists())
+            self.assertTrue((output/"development_predictions.npz").exists())
+            workbook=load_workbook(output/"development_summary.xlsx",read_only=True)
+            self.assertEqual(workbook["CV"].max_row,4); workbook.close()
+            reference=None
+            for name in ["cnn","rf","lightgbm"]:
+                self.assertFalse((output/name/"test_predictions.csv").exists())
+                with (output/name/"oof_predictions.csv").open(newline="") as handle:
+                    oof=list(csv.DictReader(handle))
+                if reference is None: reference=[r["source_row"] for r in oof]
+                self.assertEqual(reference,[r["source_row"] for r in oof])
+                part=[r for r in oof if int(r["fold"])==1]
+                indices=[int(r["source_row"])-2 for r in part]
+                expected=np.asarray([[float(r["prob_"+c]) for c in NAMES] for r in part])
+                folder=output/name/"fold_1"
+                if name=="cnn":
+                    checkpoint=torch.load(folder/"model.pt",weights_only=True)
+                    model=build_network(); model.load_state_dict(checkpoint["state_dict"]); model.eval()
+                    values=((X[indices]-checkpoint["scaler_mean"].numpy())/checkpoint["scaler_scale"].numpy()).astype(np.float32)
+                    with torch.inference_mode(): actual=torch.sigmoid(model(torch.from_numpy(values).unsqueeze(1))).numpy()
                 else:
-                    model = joblib.load(folder / "final_model/model.joblib")
-                    actual = np.column_stack([p[:, list(est.classes_).index(1)]
-                                              for est, p in zip(model.estimators_, model.predict_proba(X[indices]))])
-                np.testing.assert_allclose(actual, expected, atol=1e-6, rtol=1e-5)
-                saved = json.loads((folder / "test_metrics.json").read_text())
-                recomputed, _ = score(y[indices], expected)
-                self.assertAlmostEqual(saved["f1_macro"], recomputed["f1_macro"])
-                self.assertTrue((folder / "test_confusion_matrices.png").exists())
-            for file in ["test_roc.png", "test_pr.png", "model_comparison.png", "cnn/loss_curves.png"]:
-                self.assertTrue((output / file).exists())
+                    model=joblib.load(folder/"model.joblib")
+                    actual=np.column_stack([p[:,list(est.classes_).index(1)] for est,p in zip(model.estimators_,model.predict_proba(X[indices]))])
+                np.testing.assert_allclose(actual,expected,atol=1e-6,rtol=1e-5)
+            for filename in ["oof_roc.png","oof_pr.png","cnn/loss_curves.png"]:
+                self.assertTrue((output/filename).exists())
 
 
 if __name__ == "__main__": unittest.main()

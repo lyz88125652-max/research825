@@ -42,6 +42,7 @@ def score(y, probabilities, threshold=0.5):
             "f1": float(f1_score(y[:, i], predicted[:, i], zero_division=0)),
             "mcc": float(matthews_corrcoef(y[:, i], predicted[:, i])),
             "roc_auc": float(roc_auc_score(y[:, i], p[:, i])) if both else None,
+            "brier": float(np.mean((p[:, i] - y[:, i]) ** 2)),
             "average_precision": float(average_precision_score(y[:, i], p[:, i])) if both else None,
             "balanced_accuracy": (sensitivity + specificity) / 2 if both else None,
             "tp": tp, "fn": fn, "fp": fp, "tn": tn,
@@ -62,5 +63,6 @@ def score(y, probabilities, threshold=0.5):
         "balanced_accuracy_macro": mean("balanced_accuracy"), "mcc_macro": mean("mcc"),
         "mcc_micro": float(matthews_corrcoef(y.ravel(), predicted.ravel())),
         "binary_log_loss": binary_log_loss(y, p),
+        "brier_macro": mean("brier"),
     }
     return overall, classes

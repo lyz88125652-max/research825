@@ -40,11 +40,11 @@ def save_predictions(folder, prefix, y, probabilities, sequences, rows, threshol
 
 
 def evaluate_cv(name, trainer, X, y, sequences, rows, splits, output, args):
-    folder = output / name; folder.mkdir()
+    folder = output / name; folder.mkdir(exist_ok=True)
     p = np.full(y.shape, np.nan); folds = np.zeros(len(y), dtype=int)
     results = []
     for fold, (train, test) in enumerate(splits, 1):
-        destination = folder / f"fold_{fold}"; destination.mkdir()
+        destination = folder / f"fold_{fold}"; destination.mkdir(exist_ok=True)
         print(f"[{name}] CV fold {fold}/{len(splits)} train={len(train)} validation={len(test)}", flush=True)
         probs, details = trainer(X[train], y[train], X[test], sequences[train],
                                   destination, args, args.seed + fold)

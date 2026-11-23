@@ -238,7 +238,19 @@ def main(argv=None):
         if args.reuse_features and args.reuse_features.resolve() == args.output.resolve():
             raise ValueError("Reuse cache and output must be different files.")
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        skipped_path = args.output.with_suffix(".skipped.csv")
+        import hashlib
+        import shutil
+        from datetime import datetime
+        input_hash = hashlib.sha256(args.input.read_bytes()).hexdigest()
+        backup_dir = None
+        existing = [path for path in [args.output, args.output.with_suffix(".metadata.json"),
+                    args.output.with_suffix(".skipped.csv")] if path.exists()]
+        if existing and not args.validate_only:
+            backup_dir = args.output.parent / "backups" / datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+            backup_dir.mkdir(parents=True)
+            for path in existing: shutil.copy2(path, backup_dir / path.name)
+            print(f"Previous extraction backed up: {backup_dir}")
+        skipped_path = args.output.with_suffix(".validation.skipped.csv" if args.validate_only else ".skipped.csv")
         write_skipped(skipped_path, skipped, task)
         counts = ({name: sum(r[2][i] for r in records) for i, name in enumerate(LABEL_NAMES)}
                   if task == "multilabel" else
@@ -255,6 +267,8 @@ def main(argv=None):
         import numpy as np
 
         features, device, reused = encode_records(records, args)
+        if hashlib.sha256(args.input.read_bytes()).hexdigest() != input_hash:
+            raise ValueError("Input changed during feature extraction.")
         # All arrays are aligned by row. Load with np.load(..., allow_pickle=False).
         np.savez_compressed(
             args.output, X=features,
@@ -278,7 +292,17 @@ def main(argv=None):
             "zero_label_meaning": "not recorded / negative or unknown" if task == "multilabel" else None,
             "invalid_policy": args.invalid, "device": device,
             "sequence_conversion": "none; lowercase and modification notation unsupported",
+            "input_sha256": input_hash,
+            "extraction_kind": "fresh_forward" if reused == 0 else "cache_reuse_or_mixed",
+            "backup_directory": str(backup_dir.resolve()) if backup_dir else None,
+            "created_at": datetime.now().astimezone().isoformat(),
+            "python_version": sys.version,
         }
+        import importlib.metadata
+        metadata["versions"] = {}
+        for package in ["numpy", "torch", "transformers"]:
+            try: metadata["versions"][package] = importlib.metadata.version(package)
+            except importlib.metadata.PackageNotFoundError: pass
         args.output.with_suffix(".metadata.json").write_text(
             json.dumps(metadata, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         print(f"Saved: {args.output}; X={features.shape}; y={metadata['target_shape']}; reused={reused}")

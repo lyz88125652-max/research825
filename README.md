@@ -8,7 +8,8 @@
 
 ```bash
 python -m pip install -r requirements_multi_label.txt
-python main_multi_label.py
+python ESM-2.py --task multilabel
+python main_multi_label.py --stage prepare
 ```
 
 | 内容 | 保存先 |
@@ -23,6 +24,8 @@ python main_multi_label.py
 | Word実験ログと集計 | `experiment_logs_multi_label/` |
 
 CNN・RF・LightGBMに加え、LR・MLP・Classifier Chain・CatBoost・XGBoost・SVMのコードを用意しています。`--models` で選択し、指定しなければ9モデルが対象です。追加コードの作成時には実データの学習を実行していません。
+
+11月17日の研究計画に合わせ、OOFによる511通りの確率平均、内外CVによるStacking、長さだけの比較モデルを追加しました。`--stage all` は開発段階をまとめて実行し、独立テストは含みません。最終構成を固定した後、`--stage final --run-dir ...` で評価します。続きの実行手順は [README_multi_label.md](README_multi_label.md) にあります。
 
 `ESM-2.py` は両方式で共用します。既定入力はmulti-label CSVで、従来のmulti-class Excelもヘッダーから自動判定します。
 
