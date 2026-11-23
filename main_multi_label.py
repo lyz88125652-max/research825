@@ -87,7 +87,7 @@ def parse_args(argv=None):
 def dependency_check(args):
     modules = ["numpy", "sklearn", "iterstrat"]
     if args.stage != "prepare":
-        modules += ["openpyxl", "joblib", "matplotlib"]
+        modules += ["openpyxl", "matplotlib"]
         if args.stage in {"cv", "nested", "all", "final"}:
             if {"cnn", "mlp"} & set(args.models): modules.append("torch")
             if "lightgbm" in args.models: modules.append("lightgbm")

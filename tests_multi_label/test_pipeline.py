@@ -57,9 +57,6 @@ class PipelineTests(unittest.TestCase):
         self.assertIsNone(absent[0]["sensitivity"])
 
     def test_all_three_models_end_to_end(self):
-        import joblib
-        import torch
-        from multi_label_pipeline.cnn import build_network
         y, sequences = dataset()
         rng = np.random.default_rng(42)
         X = rng.normal(size=(len(y), 1280)).astype(np.float32)
@@ -95,18 +92,17 @@ class PipelineTests(unittest.TestCase):
                 if reference is None: reference=[r["source_row"] for r in oof]
                 self.assertEqual(reference,[r["source_row"] for r in oof])
                 part=[r for r in oof if int(r["fold"])==1]
-                indices=[int(r["source_row"])-2 for r in part]
                 expected=np.asarray([[float(r["prob_"+c]) for c in NAMES] for r in part])
                 folder=output/name/"fold_1"
-                if name=="cnn":
-                    checkpoint=torch.load(folder/"model.pt",weights_only=True)
-                    model=build_network(); model.load_state_dict(checkpoint["state_dict"]); model.eval()
-                    values=((X[indices]-checkpoint["scaler_mean"].numpy())/checkpoint["scaler_scale"].numpy()).astype(np.float32)
-                    with torch.inference_mode(): actual=torch.sigmoid(model(torch.from_numpy(values).unsqueeze(1))).numpy()
-                else:
-                    model=joblib.load(folder/"model.joblib")
-                    actual=np.column_stack([p[:,list(est.classes_).index(1)] for est,p in zip(model.estimators_,model.predict_proba(X[indices]))])
+                with np.load(folder/"prediction_cache.npz", allow_pickle=False) as cache:
+                    actual=cache['p']
                 np.testing.assert_allclose(actual,expected,atol=1e-6,rtol=1e-5)
+                self.assertTrue((output/name/"fold_metrics.csv").exists())
+                self.assertTrue((output/name/"oof_label_metrics.csv").exists())
+                self.assertTrue((output/name/"oof_confusion_matrices.png").exists())
+            self.assertTrue((output/"cnn/fold_1/history.csv").exists())
+            model_suffixes={'.joblib', '.pt', '.cbm', '.ubj'}
+            self.assertFalse([p for p in output.rglob('*') if p.suffix in model_suffixes])
             for filename in ["oof_roc.png","oof_pr.png","cnn/loss_curves.png"]:
                 self.assertTrue((output/filename).exists())
 

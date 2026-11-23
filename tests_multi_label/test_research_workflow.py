@@ -125,6 +125,10 @@ class ResearchTests(unittest.TestCase):
                 self.assertEqual(set(groups),{str(sequences[i]) for i in train})
             self.assertEqual(json.loads((output/"final_access.json").read_text())["status"],"complete")
             self.assertTrue((output/"final/test_roc.png").exists())
+            self.assertTrue((output/"final/summary.xlsx").exists())
+            self.assertTrue((output/"final/selected/test_predictions.csv").exists())
+            self.assertTrue(list((output/"nested").glob('outer_*/inner/*/fold_*/prediction_cache.npz')))
+            self.assertFalse([p for p in output.rglob('*') if p.suffix in {'.joblib', '.pt', '.cbm', '.ubj'}])
             with self.assertRaises(FileExistsError):
                 run(parse_args(["--stage","final","--run-dir",str(output)]),ROOT,MODEL_REGISTRY,trainers)
             with self.assertRaises(ValueError):

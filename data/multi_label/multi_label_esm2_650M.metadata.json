@@ -4,8 +4,8 @@
   "features": 1280,
   "pooling": "mean over residue tokens; exclude BOS, EOS and padding",
   "task": "multilabel",
-  "input": "/Users/liuyizhen/myproject/research825/data/multi-label.csv",
-  "output": "/Users/liuyizhen/myproject/research825/data/multi_label/multi_label_esm2_650M.npz",
+  "input": "/home/user/kurata2026/research825ryu/data/multi-label.csv",
+  "output": "/home/user/kurata2026/research825ryu/data/multi_label/multi_label_esm2_650M.npz",
   "accepted": 7963,
   "skipped": 39,
   "label_counts": {
@@ -27,10 +27,20 @@
     7963,
     3
   ],
-  "reused_records": 7963,
-  "reuse_features": "/Users/liuyizhen/myproject/research825/data/multi_class/training_cv_esm2_650M.npz",
+  "reused_records": 0,
+  "reuse_features": null,
   "zero_label_meaning": "not recorded / negative or unknown",
   "invalid_policy": "skip",
-  "device": "reused_cache",
-  "sequence_conversion": "none; lowercase and modification notation unsupported"
+  "device": "cpu",
+  "sequence_conversion": "none; lowercase and modification notation unsupported",
+  "input_sha256": "323858831daccd410ec6a5e33438cff78885335534f4ee1ad9be28b7ce187162",
+  "extraction_kind": "fresh_forward",
+  "backup_directory": "/home/user/kurata2026/research825ryu/data/multi_label/backups/20261123_142829_751192",
+  "created_at": "2026-11-23T14:52:23.518422+09:00",
+  "python_version": "3.10.12 (main, Nov 20 2023, 15:14:05) [GCC 11.4.0]",
+  "versions": {
+    "numpy": "1.24.3",
+    "torch": "1.12.1+cu113",
+    "transformers": "4.46.0"
+  }
 }

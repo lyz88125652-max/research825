@@ -3,7 +3,6 @@
 
 def train_predict(X_train, y_train, X_test, groups, output, args, seed):
     import inspect
-    import joblib
     from sklearn.linear_model import LogisticRegression
     from sklearn.multioutput import ClassifierChain
     from sklearn.pipeline import Pipeline
@@ -23,7 +22,6 @@ def train_predict(X_train, y_train, X_test, groups, output, args, seed):
     model.fit(X_train, y_train)
     # sklearn restores the original target column order in predict_proba.
     p = model.predict_proba(X_test)
-    joblib.dump(model, output / "model.joblib")
     return p, {"method": "classifier chain", "base_model": "balanced L2 logistic regression",
                "order": [LABEL_NAMES[index] for index in order], "internal_folds": args.chain_folds,
                "link_features": "out-of-fold binary predictions; sequential predictions at inference",

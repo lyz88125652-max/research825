@@ -1,0 +1,132 @@
+{
+  "schema": 2,
+  "arguments": {
+    "input": "/home/user/kurata2026/research825ryu/data/multi-label.csv",
+    "features": "/home/user/kurata2026/research825ryu/data/multi_label/multi_label_esm2_650M.npz",
+    "output_dir": "/home/user/kurata2026/research825ryu/results_multi_label",
+    "stage": "cv",
+    "run_dir": "/home/user/kurata2026/research825ryu/results_multi_label/run_20261123_150912_555578",
+    "split_file": "/home/user/kurata2026/research825ryu/data/multi_label/splits_seed42_folds5.json",
+    "inner_folds": 5,
+    "top_k": 10,
+    "meta_c": 1.0,
+    "meta_class_weight": "none",
+    "length_range": null,
+    "allow_reused_features": false,
+    "models": [
+      "cnn",
+      "rf",
+      "lightgbm",
+      "lr",
+      "mlp",
+      "chain",
+      "catboost",
+      "xgboost",
+      "svm"
+    ],
+    "folds": 5,
+    "test_fraction": 0.1,
+    "threshold": 0.5,
+    "seed": 42,
+    "device": "auto",
+    "esm_batch_size": 8,
+    "reextract": false,
+    "reuse_features": null,
+    "no_feature_reuse": false,
+    "prepare_only": false,
+    "trees": 300,
+    "jobs": -1,
+    "cnn_epochs": 30,
+    "cnn_batch_size": 64,
+    "learning_rate": 0.001,
+    "patience": 5,
+    "mlp_epochs": 30,
+    "mlp_batch_size": 64,
+    "linear_c": 1.0,
+    "svm_c": 1.0,
+    "chain_folds": 3,
+    "chain_order": [
+      0,
+      1,
+      2
+    ]
+  },
+  "input_sha256": "323858831daccd410ec6a5e33438cff78885335534f4ee1ad9be28b7ce187162",
+  "code_sha256": "964661e4aab922617b9ee192e3aa4251d3078d2cd4da53b38a89f4a21e95ed3b",
+  "split_sha256": "f48b09af9c2a7dbafbbad3a29d149f6155fa8b3c7c50bf98a0c61abfe1b201e7",
+  "features_sha256": "bae6dc880fb6135a9aa4fa800915c87e0b432d2dfb591069354645cfcbaa0eb0",
+  "versions": {
+    "numpy": "1.24.3",
+    "scikit-learn": "1.2.2",
+    "torch": "1.12.1+cu113",
+    "transformers": "4.46.0",
+    "iterative-stratification": "0.1.9",
+    "lightgbm": "4.6.0",
+    "catboost": "1.2.10",
+    "xgboost": "3.0.5",
+    "matplotlib": "3.5.1",
+    "openpyxl": "3.1.5"
+  },
+  "commit": "922c6d3fd3de824217f310856d674967168ea42a",
+  "label_names": [
+    "antioxidant",
+    "antimicrobial",
+    "toxic"
+  ],
+  "training_rows": 7176,
+  "test_rows": 787,
+  "label_policy": "recorded positive=1; negative/unrecorded/unknown=0",
+  "threshold": 0.5,
+  "reference_source_sha256": {
+    "antioxidant_peptides.csv": "d949f7f9ba6bd22dded9da41dcd9ae0bf0ca1acfd5485c1fd12b265cc7aa7c83",
+    "naturalAMPs_APD2024a.csv": "0c0e19c526e3897077817903696489dca2b849d89bf7535cfe4c9c8b58bf85b1",
+    "poisonous.csv": "979adada88faa7b87c1a10c08f9d823c7a3d0f0a4c430468b4463591293a625e"
+  },
+  "feature_metadata_sha256": "a72d43a21d16bceab4105762cabc5a68adc6078161ec9c708dc674c3571fd541",
+  "feature_metadata": {
+    "model": "facebook/esm2_t33_650M_UR50D",
+    "layer": 33,
+    "features": 1280,
+    "pooling": "mean over residue tokens; exclude BOS, EOS and padding",
+    "task": "multilabel",
+    "input": "/home/user/kurata2026/research825ryu/data/multi-label.csv",
+    "output": "/home/user/kurata2026/research825ryu/data/multi_label/multi_label_esm2_650M.npz",
+    "accepted": 7963,
+    "skipped": 39,
+    "label_counts": {
+      "antioxidant": 995,
+      "antimicrobial": 3306,
+      "toxic": 4411
+    },
+    "labels": [
+      "antioxidant",
+      "antimicrobial",
+      "toxic"
+    ],
+    "label_names": [
+      "antioxidant",
+      "antimicrobial",
+      "toxic"
+    ],
+    "target_shape": [
+      7963,
+      3
+    ],
+    "reused_records": 0,
+    "reuse_features": null,
+    "zero_label_meaning": "not recorded / negative or unknown",
+    "invalid_policy": "skip",
+    "device": "cpu",
+    "sequence_conversion": "none; lowercase and modification notation unsupported",
+    "input_sha256": "323858831daccd410ec6a5e33438cff78885335534f4ee1ad9be28b7ce187162",
+    "extraction_kind": "fresh_forward",
+    "backup_directory": "/home/user/kurata2026/research825ryu/data/multi_label/backups/20261123_142829_751192",
+    "created_at": "2026-11-23T14:52:23.518422+09:00",
+    "python_version": "3.10.12 (main, Nov 20 2023, 15:14:05) [GCC 11.4.0]",
+    "versions": {
+      "numpy": "1.24.3",
+      "torch": "1.12.1+cu113",
+      "transformers": "4.46.0"
+    }
+  }
+}

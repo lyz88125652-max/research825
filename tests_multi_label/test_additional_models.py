@@ -65,6 +65,7 @@ class AdditionalModelTests(TestCase):
         self.assertEqual(p.shape, (2, 3))
         np.testing.assert_allclose(details["scale_pos_weight"], [3, 1/3, 1/3])
         for index, (params, estimator) in enumerate(estimators):
+            estimator.save_model.assert_not_called()
             self.assertEqual(params["objective"], "binary:logistic")
             np.testing.assert_array_equal(estimator.fit.call_args.args[1], y[:, index])
 
@@ -78,6 +79,7 @@ class AdditionalModelTests(TestCase):
         with tempfile.TemporaryDirectory() as folder, mock.patch.dict(sys.modules, {"catboost": SimpleNamespace(CatBoostClassifier=factory)}), mock.patch("joblib.dump"):
             p, _ = train_predict(np.zeros((2, 1280)), y, np.zeros((1, 1280)), None, Path(folder), parse_args([]), 42)
         self.assertEqual(factory.call_args.kwargs["loss_function"], "MultiLogloss")
+        model.save_model.assert_not_called()
         np.testing.assert_array_equal(model.fit.call_args.args[1], y)
         np.testing.assert_array_equal(p, expected)
 

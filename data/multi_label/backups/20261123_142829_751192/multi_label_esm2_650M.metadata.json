@@ -1,0 +1,36 @@
+{
+  "model": "facebook/esm2_t33_650M_UR50D",
+  "layer": 33,
+  "features": 1280,
+  "pooling": "mean over residue tokens; exclude BOS, EOS and padding",
+  "task": "multilabel",
+  "input": "/Users/liuyizhen/myproject/research825/data/multi-label.csv",
+  "output": "/Users/liuyizhen/myproject/research825/data/multi_label/multi_label_esm2_650M.npz",
+  "accepted": 7963,
+  "skipped": 39,
+  "label_counts": {
+    "antioxidant": 995,
+    "antimicrobial": 3306,
+    "toxic": 4411
+  },
+  "labels": [
+    "antioxidant",
+    "antimicrobial",
+    "toxic"
+  ],
+  "label_names": [
+    "antioxidant",
+    "antimicrobial",
+    "toxic"
+  ],
+  "target_shape": [
+    7963,
+    3
+  ],
+  "reused_records": 7963,
+  "reuse_features": "/Users/liuyizhen/myproject/research825/data/multi_class/training_cv_esm2_650M.npz",
+  "zero_label_meaning": "not recorded / negative or unknown",
+  "invalid_policy": "skip",
+  "device": "reused_cache",
+  "sequence_conversion": "none; lowercase and modification notation unsupported"
+}

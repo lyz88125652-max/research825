@@ -2,7 +2,6 @@
 
 
 def train_predict(X_train, y_train, X_test, groups, output, args, seed):
-    import joblib
     import numpy as np
     from xgboost import XGBClassifier
     from .model_utils import BinaryRelevancePredictor, positive_probabilities
@@ -20,9 +19,7 @@ def train_predict(X_train, y_train, X_test, groups, output, args, seed):
             n_jobs=args.jobs, random_state=seed, verbosity=0)
         estimator.fit(X_train, y_train[:, column])
         estimators.append(estimator)
-        estimator.save_model(str(output / f"label_{column}.ubj"))
     model = BinaryRelevancePredictor(estimators)
     p = positive_probabilities(model, X_test)
-    joblib.dump(model, output / "model.joblib")
     return p, {"method": "binary relevance", "trees_per_label": args.trees,
                "scale_pos_weight": weights.tolist(), "weight_source": "training only"}

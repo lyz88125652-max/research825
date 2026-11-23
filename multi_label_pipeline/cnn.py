@@ -4,7 +4,6 @@ import csv
 import random
 import numpy as np
 
-from . import LABEL_NAMES
 from .data import make_holdout
 from .metrics import binary_log_loss
 
@@ -97,11 +96,6 @@ def train_predict(X_train, y_train, X_test, groups, output, args, seed, *,
         loss = fit_epoch(loader, model, criterion, optimizer)
         history.append(["refit", epoch, loss, "", ""])
     p = predict(model, scaler, X_test)
-    torch.save({"state_dict": {k: v.detach().cpu() for k, v in model.state_dict().items()},
-                "scaler_mean": torch.tensor(scaler.mean_), "scaler_scale": torch.tensor(scaler.scale_),
-                "label_names": list(LABEL_NAMES), "task": "multilabel", "activation": "sigmoid",
-                "threshold": args.threshold, "epochs": best_epoch, "input_dim": 1280,
-                "architecture": model_name.lower()}, output / "model.pt")
     with (output / "history.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
         writer.writerow(["phase", "epoch", "train_weighted_loss", "train_eval_loss", "validation_loss"])

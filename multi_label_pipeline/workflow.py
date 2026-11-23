@@ -149,7 +149,6 @@ def select_recipe(output, y, sequences, rows, args):
 
 def run_final(X, y, sequences, rows, train, test, output, args, trainers):
     """No selection uses holdout labels. Require a sealed recipe and one-time access marker."""
-    import joblib
     from .research_reporting import final_plots, workbook
     recipe = json.loads((output / "final_recipe.json").read_text())
     for path, digest in recipe["artifacts"].items():
@@ -179,7 +178,6 @@ def run_final(X, y, sequences, rows, train, test, output, args, trainers):
         for role, definition in definitions.items():
             if role == "selected" and meta is not None:
                 values = meta.predict_proba(base_p[:, columns], definition["models"])
-                joblib.dump(meta, destination / "selected_stacker.joblib")
             else: values = average(base_p, args.models, definition["models"])
             folder = destination / role; folder.mkdir()
             metrics, _ = save_predictions(folder, "test_", y[test], values, sequences[test], rows[test], args.threshold)

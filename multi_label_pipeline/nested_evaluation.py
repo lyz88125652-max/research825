@@ -1,7 +1,6 @@
 """Select candidates and fit meta-models inside each outer training partition."""
 
 import json
-import joblib
 import numpy as np
 from .data import make_splits
 from .ensemble import rank_subsets, candidate_roles, average, save_search
@@ -61,7 +60,6 @@ def run_nested(X, y, sequences, rows, names, outer_splits, output, args, trainer
             if role.startswith("top_"):
                 stacker, columns = fit_stacker(inner_p, y[fit], names, subset, args, args.seed + fold)
                 methods["stacking"] = stacker.predict_proba(outer_p[:, columns], subset)
-                joblib.dump(stacker, folder / f"{role}_stacker.joblib")
             for method, p in methods.items():
                 key = role + "__" + method
                 pools.setdefault(key, np.full(y.shape, np.nan))[valid] = p

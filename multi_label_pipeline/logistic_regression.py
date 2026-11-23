@@ -2,7 +2,6 @@
 
 
 def train_predict(X_train, y_train, X_test, groups, output, args, seed):
-    import joblib
     from sklearn.linear_model import LogisticRegression
     from sklearn.multioutput import MultiOutputClassifier
     from sklearn.pipeline import Pipeline
@@ -18,6 +17,5 @@ def train_predict(X_train, y_train, X_test, groups, output, args, seed):
     model.fit(X_train, y_train)
     p = positive_probabilities(model.named_steps["classifiers"],
                                model.named_steps["scaler"].transform(X_test))
-    joblib.dump(model, output / "model.joblib")
     return p, {"method": "binary relevance", "regularization": "L2",
                "C": args.linear_c, "scaler_fit": "training only"}

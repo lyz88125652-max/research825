@@ -1,0 +1,29 @@
+{
+  "fold": 3,
+  "train_size": 5731,
+  "validation_size": 1445,
+  "subset_accuracy": 0.7764705882352941,
+  "label_accuracy_mean": 0.8959630911188005,
+  "hamming_loss": 0.10403690888119954,
+  "sensitivity_macro": 0.884395177656501,
+  "specificity_macro": 0.9067027016687529,
+  "precision_macro": 0.8343570539194749,
+  "f1_macro": 0.8547063209627696,
+  "f1_micro": 0.8567799301365513,
+  "f1_samples": 0.868719723183391,
+  "jaccard_samples": 0.845674740484429,
+  "roc_auc_macro": 0.9612981253494963,
+  "average_precision_macro": 0.943339851364042,
+  "balanced_accuracy_macro": 0.8955489396626269,
+  "mcc_macro": 0.7645863039342097,
+  "mcc_micro": 0.7751103046154624,
+  "binary_log_loss": 0.2386043114236604,
+  "brier_macro": 0.07180758801258795,
+  "training": {
+    "selected_epochs": 11,
+    "device": "cpu",
+    "inner_train_rows": 4583,
+    "inner_validation_rows": 1148,
+    "loss": "BCEWithLogitsLoss; training-only pos_weight"
+  }
+}

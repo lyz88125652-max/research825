@@ -74,7 +74,9 @@ python main_multi_label.py --stage all --models cnn rf lightgbm --folds 3 --inne
 
 prepare時点の特徴量ハッシュは未固定です。cvの前に新規抽出し、初めて特徴量を使う段階でハッシュとmetadataを固定できます。
 
-完了したfitは学習・予測データ、ラベル、seed、設定の指紋とともに保存します。同じstageの再実行では整合する完了済みfitを再利用します。失敗は `failure.json` とstage状態に記録します。
+完了したfitの予測確率を、学習・予測データ、ラベル、seed、設定の指紋とともに `prediction_cache.npz` に保存します。同じstageの再実行では整合する予測キャッシュを再利用します。失敗は `failure.json` とstage状態に記録します。
+
+学習済みモデル自体（`model.joblib`、`model.pt`、`model.cbm`、`label_*.ubj`、`*_stacker.joblib`）は出力しません。CV・nested CV・最終testすべてに適用します。モデルはメモリ上で学習・予測し、予測確率・指標・Excel・図・学習履歴は保存します。新しい配列への推論には再学習が必要です。既存結果のモデルファイルは自動削除しません。
 
 ## モデルとOOF
 
@@ -132,7 +134,7 @@ selectは外側CV平均Macro-F1、平均Macro AP、平均モデル数、roleとm
 | nested/ | 各foldの内外分割・候補・比較表・平均SD・Stackingと平均のペア差の図 |
 | bias/ | 長さのみのLR、長さ分布、共通長範囲、誤りの一致率・相関 |
 | final_recipe.json | 学習側だけで固定した最終構成 |
-| final/ | 最終モデル・テスト予測・指標・Excel・ROC・PR・混同行列 |
+| final/ | 最終学習の予測キャッシュ・学習記録、テスト予測・指標・Excel・ROC・PR・混同行列 |
 
 共通長範囲は最初の `--length-range 最短 最長`、または学習側の陽性配列長範囲の共通部分で決めます。範囲内の既存OOFを再評価する処理であり、範囲内だけでモデルを学習し直す実験ではありません。
 
