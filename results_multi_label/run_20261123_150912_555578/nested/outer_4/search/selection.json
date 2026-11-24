@@ -1,0 +1,89 @@
+{
+  "candidate_count": 511,
+  "roles": {
+    "top_01": [
+      "rf",
+      "lightgbm",
+      "mlp",
+      "chain",
+      "svm"
+    ],
+    "top_02": [
+      "rf",
+      "lightgbm",
+      "lr",
+      "mlp",
+      "svm"
+    ],
+    "top_03": [
+      "lightgbm",
+      "mlp",
+      "chain",
+      "svm"
+    ],
+    "top_04": [
+      "lightgbm",
+      "mlp",
+      "chain",
+      "catboost"
+    ],
+    "top_05": [
+      "lightgbm",
+      "mlp",
+      "chain",
+      "xgboost"
+    ],
+    "top_06": [
+      "rf",
+      "lightgbm",
+      "mlp",
+      "chain",
+      "xgboost",
+      "svm"
+    ],
+    "top_07": [
+      "lightgbm",
+      "mlp",
+      "chain",
+      "catboost",
+      "svm"
+    ],
+    "top_08": [
+      "rf",
+      "lightgbm",
+      "mlp",
+      "chain",
+      "catboost",
+      "xgboost",
+      "svm"
+    ],
+    "top_09": [
+      "rf",
+      "lightgbm",
+      "lr",
+      "mlp"
+    ],
+    "top_10": [
+      "lightgbm",
+      "lr",
+      "mlp",
+      "xgboost"
+    ],
+    "best_single": [
+      "lightgbm"
+    ],
+    "all_models": [
+      "cnn",
+      "rf",
+      "lightgbm",
+      "lr",
+      "mlp",
+      "chain",
+      "catboost",
+      "xgboost",
+      "svm"
+    ]
+  },
+  "selection_rule": "OOF Macro-F1 desc, Macro AP desc, fewer models, candidate name",
+  "interpretation": "development search scores; not an unbiased performance estimate"
+}

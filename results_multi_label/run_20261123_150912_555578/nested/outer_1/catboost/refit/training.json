@@ -1,0 +1,7 @@
+{
+  "method": "native multilabel",
+  "loss": "MultiLogloss",
+  "iterations": 300,
+  "class_weight": "none; unweighted per-label binary cross entropy",
+  "device": "CPU"
+}

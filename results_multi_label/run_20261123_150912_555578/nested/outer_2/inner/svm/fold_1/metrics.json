@@ -1,0 +1,29 @@
+{
+  "fold": 1,
+  "subset_accuracy": 0.7787456445993032,
+  "label_accuracy_mean": 0.9059233449477352,
+  "hamming_loss": 0.09407665505226481,
+  "sensitivity_macro": 0.8661287454247159,
+  "specificity_macro": 0.9035537728372894,
+  "precision_macro": 0.8566019829927419,
+  "f1_macro": 0.860771762349001,
+  "f1_micro": 0.8722397476340693,
+  "f1_samples": 0.870499419279907,
+  "jaccard_samples": 0.8475609756097561,
+  "roc_auc_macro": 0.958983886340928,
+  "average_precision_macro": 0.9299187579495903,
+  "balanced_accuracy_macro": 0.8848412591310026,
+  "mcc_macro": 0.7717292372086964,
+  "mcc_micro": 0.7979274047401068,
+  "binary_log_loss": 0.22643751862486242,
+  "brier_macro": 0.06907661786029806,
+  "training": {
+    "method": "binary relevance",
+    "kernel": "rbf",
+    "C": 1.0,
+    "gamma": "scale",
+    "probability": "SVC internal training-only calibration",
+    "decision": "probability threshold; not SVC.predict",
+    "scaler_fit": "training only"
+  }
+}

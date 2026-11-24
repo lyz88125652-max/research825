@@ -1,0 +1,6 @@
+{
+  "unit": "candidate-selection procedure by rank; subsets may differ between outer folds",
+  "holdout_used": false,
+  "paired_comparison": "same subset and outer fold for voting and stacking",
+  "selection_bias": "Choosing the final procedure on this summary still requires the untouched final test."
+}

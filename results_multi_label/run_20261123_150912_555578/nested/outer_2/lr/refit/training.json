@@ -1,0 +1,6 @@
+{
+  "method": "binary relevance",
+  "regularization": "L2",
+  "C": 1.0,
+  "scaler_fit": "training only"
+}

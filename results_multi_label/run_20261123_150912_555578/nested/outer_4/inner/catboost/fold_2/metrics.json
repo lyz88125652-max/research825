@@ -1,0 +1,27 @@
+{
+  "fold": 2,
+  "subset_accuracy": 0.7662565905096661,
+  "label_accuracy_mean": 0.8954305799648506,
+  "hamming_loss": 0.10456942003514938,
+  "sensitivity_macro": 0.8549675136800553,
+  "specificity_macro": 0.89970438931295,
+  "precision_macro": 0.8723455848424067,
+  "f1_macro": 0.8634073617720297,
+  "f1_micro": 0.8570284341209452,
+  "f1_samples": 0.8483889865260692,
+  "jaccard_samples": 0.8279144698301114,
+  "roc_auc_macro": 0.9538677576595128,
+  "average_precision_macro": 0.9331113257215643,
+  "balanced_accuracy_macro": 0.8773359514965028,
+  "mcc_macro": 0.7613084970408167,
+  "mcc_micro": 0.7746290488318167,
+  "binary_log_loss": 0.23557186898595084,
+  "brier_macro": 0.07272835963077783,
+  "training": {
+    "method": "native multilabel",
+    "loss": "MultiLogloss",
+    "iterations": 300,
+    "class_weight": "none; unweighted per-label binary cross entropy",
+    "device": "CPU"
+  }
+}

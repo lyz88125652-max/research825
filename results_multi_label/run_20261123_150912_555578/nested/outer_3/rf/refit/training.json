@@ -1,0 +1,4 @@
+{
+  "method": "binary relevance",
+  "trees_per_label": 300
+}

@@ -1,0 +1,26 @@
+{
+  "fold": 1,
+  "subset_accuracy": 0.7491289198606271,
+  "label_accuracy_mean": 0.8879210220673636,
+  "hamming_loss": 0.11207897793263646,
+  "sensitivity_macro": 0.8643416256431541,
+  "specificity_macro": 0.8861258833928382,
+  "precision_macro": 0.8391549836680641,
+  "f1_macro": 0.8514547938931926,
+  "f1_micro": 0.8475513428120063,
+  "f1_samples": 0.8448025551684087,
+  "jaccard_samples": 0.8208478513356563,
+  "roc_auc_macro": 0.9467483562083973,
+  "average_precision_macro": 0.9280696967298496,
+  "balanced_accuracy_macro": 0.8752337545179961,
+  "mcc_macro": 0.7429029402260134,
+  "mcc_micro": 0.7590357790259622,
+  "binary_log_loss": 0.36705066410220843,
+  "brier_macro": 0.08851053367347395,
+  "training": {
+    "method": "binary relevance",
+    "regularization": "L2",
+    "C": 1.0,
+    "scaler_fit": "training only"
+  }
+}

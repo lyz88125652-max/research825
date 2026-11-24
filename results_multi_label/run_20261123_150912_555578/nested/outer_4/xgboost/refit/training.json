@@ -1,0 +1,10 @@
+{
+  "method": "binary relevance",
+  "trees_per_label": 300,
+  "scale_pos_weight": [
+    7.020949720670391,
+    1.4130252100840337,
+    0.8082493702770781
+  ],
+  "weight_source": "training only"
+}

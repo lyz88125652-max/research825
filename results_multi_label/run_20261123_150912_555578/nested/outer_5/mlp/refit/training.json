@@ -1,0 +1,7 @@
+{
+  "selected_epochs": 6,
+  "device": "cpu",
+  "inner_train_rows": 4577,
+  "inner_validation_rows": 1155,
+  "loss": "BCEWithLogitsLoss; training-only pos_weight"
+}

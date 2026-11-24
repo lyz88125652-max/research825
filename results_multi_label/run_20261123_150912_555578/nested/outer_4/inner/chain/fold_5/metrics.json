@@ -1,0 +1,32 @@
+{
+  "fold": 5,
+  "subset_accuracy": 0.7515204170286707,
+  "label_accuracy_mean": 0.8893715609614827,
+  "hamming_loss": 0.11062843903851723,
+  "sensitivity_macro": 0.86849069565605,
+  "specificity_macro": 0.886639493868176,
+  "precision_macro": 0.8378219057018891,
+  "f1_macro": 0.8526490894925302,
+  "f1_micro": 0.8496062992125984,
+  "f1_samples": 0.8469446857804808,
+  "jaccard_samples": 0.8230524181870836,
+  "roc_auc_macro": 0.9506876802178783,
+  "average_precision_macro": 0.9325154248747639,
+  "balanced_accuracy_macro": 0.877565094762113,
+  "mcc_macro": 0.7462621364782992,
+  "mcc_micro": 0.762285334666843,
+  "binary_log_loss": 0.3409133449453637,
+  "brier_macro": 0.08556745926165649,
+  "training": {
+    "method": "classifier chain",
+    "base_model": "balanced L2 logistic regression",
+    "order": [
+      "antioxidant",
+      "antimicrobial",
+      "toxic"
+    ],
+    "internal_folds": 3,
+    "link_features": "out-of-fold binary predictions; sequential predictions at inference",
+    "order_selection": "fixed by CLI; independent test never used"
+  }
+}

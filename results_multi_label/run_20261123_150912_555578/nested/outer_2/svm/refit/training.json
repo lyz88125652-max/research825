@@ -1,0 +1,9 @@
+{
+  "method": "binary relevance",
+  "kernel": "rbf",
+  "C": 1.0,
+  "gamma": "scale",
+  "probability": "SVC internal training-only calibration",
+  "decision": "probability threshold; not SVC.predict",
+  "scaler_fit": "training only"
+}

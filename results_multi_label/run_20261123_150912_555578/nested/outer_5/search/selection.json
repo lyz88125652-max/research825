@@ -1,0 +1,93 @@
+{
+  "candidate_count": 511,
+  "roles": {
+    "top_01": [
+      "rf",
+      "chain",
+      "catboost",
+      "xgboost",
+      "svm"
+    ],
+    "top_02": [
+      "cnn",
+      "rf",
+      "lightgbm",
+      "xgboost",
+      "svm"
+    ],
+    "top_03": [
+      "cnn",
+      "rf",
+      "lightgbm",
+      "svm"
+    ],
+    "top_04": [
+      "lightgbm",
+      "lr",
+      "catboost",
+      "svm"
+    ],
+    "top_05": [
+      "cnn",
+      "rf",
+      "lightgbm",
+      "lr",
+      "xgboost",
+      "svm"
+    ],
+    "top_06": [
+      "rf",
+      "lr",
+      "catboost",
+      "xgboost",
+      "svm"
+    ],
+    "top_07": [
+      "lr",
+      "catboost",
+      "xgboost",
+      "svm"
+    ],
+    "top_08": [
+      "cnn",
+      "rf",
+      "lightgbm",
+      "lr",
+      "catboost",
+      "xgboost",
+      "svm"
+    ],
+    "top_09": [
+      "rf",
+      "lightgbm",
+      "lr",
+      "chain",
+      "catboost",
+      "xgboost",
+      "svm"
+    ],
+    "top_10": [
+      "rf",
+      "lightgbm",
+      "lr",
+      "catboost",
+      "svm"
+    ],
+    "best_single": [
+      "lightgbm"
+    ],
+    "all_models": [
+      "cnn",
+      "rf",
+      "lightgbm",
+      "lr",
+      "mlp",
+      "chain",
+      "catboost",
+      "xgboost",
+      "svm"
+    ]
+  },
+  "selection_rule": "OOF Macro-F1 desc, Macro AP desc, fewer models, candidate name",
+  "interpretation": "development search scores; not an unbiased performance estimate"
+}

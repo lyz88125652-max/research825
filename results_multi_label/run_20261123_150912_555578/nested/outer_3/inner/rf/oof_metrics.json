@@ -1,0 +1,21 @@
+{
+  "n": 5731,
+  "threshold": 0.5,
+  "subset_accuracy": 0.7520502530099459,
+  "label_accuracy_mean": 0.8943756179840633,
+  "hamming_loss": 0.10562438201593671,
+  "sensitivity_macro": 0.8213748050759079,
+  "specificity_macro": 0.9041502021480471,
+  "precision_macro": 0.8751668199666117,
+  "f1_macro": 0.8461998802706248,
+  "f1_micro": 0.8533828516066526,
+  "f1_samples": 0.8351945559239226,
+  "jaccard_samples": 0.814401209794684,
+  "roc_auc_macro": 0.9543633733925375,
+  "average_precision_macro": 0.9310543574359005,
+  "balanced_accuracy_macro": 0.8627625036119775,
+  "mcc_macro": 0.7466537029064848,
+  "mcc_micro": 0.7710116268744134,
+  "binary_log_loss": 0.2640217465210548,
+  "brier_macro": 0.0803596127622999
+}
