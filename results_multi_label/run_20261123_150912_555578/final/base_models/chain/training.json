@@ -1,0 +1,12 @@
+{
+  "method": "classifier chain",
+  "base_model": "balanced L2 logistic regression",
+  "order": [
+    "antioxidant",
+    "antimicrobial",
+    "toxic"
+  ],
+  "internal_folds": 3,
+  "link_features": "out-of-fold binary predictions; sequential predictions at inference",
+  "order_selection": "fixed by CLI; independent test never used"
+}

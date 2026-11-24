@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "selected": {
+    "role": "top_07",
+    "method": "voting",
+    "models": [
+      "lightgbm",
+      "mlp",
+      "chain",
+      "xgboost",
+      "svm"
+    ]
+  },
+  "baselines": {
+    "best_single": [
+      "lightgbm"
+    ],
+    "all_models": [
+      "cnn",
+      "rf",
+      "lightgbm",
+      "lr",
+      "mlp",
+      "chain",
+      "catboost",
+      "xgboost",
+      "svm"
+    ]
+  },
+  "threshold": 0.5,
+  "meta_c": 1.0,
+  "meta_class_weight": "none",
+  "selection_rule": "nested mean Macro-F1, mean Macro AP, mean model count, role and method",
+  "test_used": false,
+  "artifacts": {
+    "run_config.json": "d40a8b103574f3f131fe15a2870c4cf892eb29076e2d8d7336dcf0f160ee1c58",
+    "splits.json": "f48b09af9c2a7dbafbbad3a29d149f6155fa8b3c7c50bf98a0c61abfe1b201e7",
+    "development_predictions.npz": "83f124c89d061a29e4a036898b9d65ec34c0b250f1f7838d1613d866d196f74a",
+    "ensemble/ranking.csv": "bfe0179c520ee104fbedc3ddd8cb023a20fbefc7f52f891b10faedbec26a34b9",
+    "nested/summary.json": "25966878fa8d292e58a16b851fe3c906f68b11a61ab8721186fece629d5d28e8"
+  }
+}
