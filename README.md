@@ -1,6 +1,6 @@
 # research825 ペプチド活性予測
 
-抗酸化・抗菌・毒性のmulti-label予測を開発しています。旧multi-class実験はmulti_classフォルダに保管しています。
+抗酸化・抗菌・毒性のmulti-label予測を開発しています。旧multi-class実験はmulti-classフォルダに保管しています。
 
 ## Multi-label 実験
 
@@ -31,16 +31,16 @@ CNN・RF・LightGBMに加え、LR・MLP・Classifier Chain・CatBoost・XGBoost�
 
 ## Multi-class 実験の保管
 
-旧multi-class専用のコード・結果・モデル・テスト・Wordログ・学習用Excelは [multi_class/](multi_class/README.md) に集約しました。
+旧multi-class専用のコード・結果・モデル・テスト・Wordログ・学習用Excelは [multi-class/](multi-class/README.md) に集約しました。
 
 ```bash
-python multi_class/main_multi_class.py
-python -m unittest discover -s multi_class/tests_multi_class -v
+python multi-class/main_multi_class.py
+python -m unittest discover -s multi-class/tests_multi_class -v
 ```
 
 元の活性別CSV・FASTA、共通の `ESM-2.py`、multi-label側でも再利用する旧特徴量キャッシュ `data/multi_class/training_cv_esm2_650M.*` は現在の場所に残しています。
 
-移動先の対応は [MULTI_CLASS_PATHS.md](multi_class/MULTI_CLASS_PATHS.md) を参照してください。過去のWordログ・モデル・メタデータに記録された実験当時のパスは、そのまま保持しています。
+移動先の対応は [MULTI_CLASS_PATHS.md](multi-class/MULTI_CLASS_PATHS.md) を参照してください。過去のWordログ・モデル・メタデータに記録された実験当時のパスは、そのまま保持しています。
 
 ## 今後のmulti-label用に共有するデータ
 
